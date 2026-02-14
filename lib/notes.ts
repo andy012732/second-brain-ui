@@ -85,9 +85,14 @@ async function getGitHubFile(filePath: string) {
       ref: GITHUB_BRANCH,
     });
 
-    if (Array.isArray(data) || !('content' in data)) throw new Error('Not a file');
+    if (Array.isArray(data)) throw new Error('Not a file');
+    
+    // 強制轉型，解決 TypeScript 對於聯合型別的誤判
+    const fileData = data as { content?: string; sha: string };
 
-    const content = Buffer.from(data.content, 'base64').toString('utf-8');
+    if (!fileData.content) throw new Error('File content is empty');
+
+    const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
     const { data: frontmatter, content: markdownBody } = matter(content);
 
     return {
