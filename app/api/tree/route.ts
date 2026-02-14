@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getFileTree } from '@/lib/notes';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const tree = await getFileTree();

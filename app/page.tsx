@@ -1,6 +1,8 @@
 import Sidebar from '@/components/Sidebar';
 import MarkdownViewer from '@/components/MarkdownViewer';
 
+export const dynamic = 'force-dynamic';
+
 export default function Home({
   searchParams,
 }: {
