@@ -38,7 +38,7 @@ async function getGitHubTree(dir: string = ''): Promise<FileNode[]> {
 
     if (!Array.isArray(data)) return [];
 
-    const nodes: FileNode[] = await Promise.all(
+    const rawNodes = await Promise.all(
       data.map(async (item) => {
         // 忽略隱藏檔案
         if (item.name.startsWith('.')) return null;
@@ -49,20 +49,20 @@ async function getGitHubTree(dir: string = ''): Promise<FileNode[]> {
             path: item.path,
             type: 'directory',
             children: await getGitHubTree(item.path),
-          };
+          } as FileNode;
         } else if (item.type === 'file' && item.name.endsWith('.md')) {
           return {
             name: item.name,
             path: item.path,
             type: 'file',
-          };
+          } as FileNode;
         }
         return null;
       })
     );
 
     // 過濾 null 並排序
-    return nodes
+    return rawNodes
       .filter((n): n is FileNode => n !== null)
       .sort((a, b) => {
         if (a.type === b.type) return a.name.localeCompare(b.name);
