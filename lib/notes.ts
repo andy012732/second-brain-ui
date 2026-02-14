@@ -85,7 +85,7 @@ async function getGitHubFile(filePath: string) {
       ref: GITHUB_BRANCH,
     });
 
-    if (Array.isArray(data) || !data.content) throw new Error('Not a file');
+    if (Array.isArray(data) || !('content' in data)) throw new Error('Not a file');
 
     const content = Buffer.from(data.content, 'base64').toString('utf-8');
     const { data: frontmatter, content: markdownBody } = matter(content);
