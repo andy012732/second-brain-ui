@@ -3,15 +3,16 @@ import MarkdownViewer from '@/components/MarkdownViewer';
 
 export const dynamic = 'force-dynamic';
 
-export default function Home({
+export default async function Home({
   searchParams,
 }: {
-  searchParams: { file?: string };
+  searchParams: Promise<{ file?: string }>;
 }) {
+  const params = await searchParams;
   return (
     <main className="flex h-screen w-screen bg-black text-gray-200 overflow-hidden">
       <Sidebar />
-      <MarkdownViewer filePath={searchParams.file || ''} />
+      <MarkdownViewer filePath={params.file || ''} />
     </main>
   );
 }
