@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
-import { Pencil, Save, X, Loader2, Trash2 } from 'lucide-react';
+import { Pencil, Save, X, Loader2, Trash2, List } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import FloatingToolbar from './FloatingToolbar';
 import CopilotPanel from './CopilotPanel';
@@ -14,12 +14,34 @@ interface MarkdownViewerProps {
   filePath: string;
 }
 
+// 簡單的 Wiki Link 處理器
+const processWikiLinks = (text: string) => {
+    // 將 [[Filename]] 轉換為 [Filename](/?file=Filename.md)
+    // 這裡做簡化處理，假設連結到同目錄或根目錄
+    return text.replace(/\[\[(.*?)\]\]/g, (match, p1) => {
+        // 如果內容有 | (例如 [[Filename|Alias]])
+        const parts = p1.split('|');
+        const linkText = parts.length > 1 ? parts[1] : parts[0];
+        const linkTarget = parts[0];
+        return `[${linkText}](/?file=${encodeURIComponent(linkTarget + '.md')})`;
+    });
+};
+
+// 大綱型別
+interface TocItem {
+    text: string;
+    level: number;
+    id: string;
+}
+
 export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
   const [content, setContent] = useState('');
-  const [originalContent, setOriginalContent] = useState(''); // 用來比對是否有修改
+  const [originalContent, setOriginalContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [toc, setToc] = useState<TocItem[]>([]);
+  const [showToc, setShowToc] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -28,8 +50,9 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
     if (!filePath) return;
 
     setLoading(true);
-    setIsEditing(false); // 切換檔案時退出編輯模式
+    setIsEditing(false);
     setError('');
+    setToc([]);
     
     fetch(`/api/file?path=${encodeURIComponent(filePath)}`)
       .then(async (res) => {
@@ -37,6 +60,7 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
         const data = await res.json();
         setContent(data.content);
         setOriginalContent(data.content);
+        generateToc(data.content);
       })
       .catch((err) => {
         setError(err.message);
@@ -46,6 +70,23 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
         setLoading(false);
       });
   }, [filePath]);
+
+  // 生成大綱
+  const generateToc = (md: string) => {
+      const lines = md.split('\n');
+      const items: TocItem[] = [];
+      lines.forEach((line, index) => {
+          const match = line.match(^(#{1,6})\s+(.*));
+          if (match) {
+              items.push({
+                  level: match[1].length,
+                  text: match[2],
+                  id: `heading-${index}`
+              });
+          }
+      });
+      setToc(items);
+  };
 
   // 儲存檔案
   const handleSave = async () => {
@@ -61,29 +102,44 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
         
         setOriginalContent(content);
         setIsEditing(false);
-        router.refresh(); // 重新整理確保資料同步
+        generateToc(content); // 更新大綱
+        router.refresh();
     } catch (err) {
         alert('儲存失敗！請檢查網路連線。');
-        console.error(err);
     } finally {
         setIsSaving(false);
     }
   };
 
-  // 刪除檔案 (簡單版：移到 .trash，這裡先做直接刪除或歸檔)
-  // 為了安全，V1 先做標記刪除或需二次確認
+  // 刪除檔案
   const handleDelete = async () => {
-      if(!confirm('確定要刪除這則筆記嗎？(此操作會同步到 GitHub)')) return;
-      // 這裡暫時還沒實作後端 DELETE API，先保留介面
-      alert('刪除功能將在下個版本實裝！保護學長的資料安全先！🛡️');
+      if(!confirm('⚠️ 確定要刪除這則筆記嗎？此操作無法復原！')) return;
+      
+      try {
+          const res = await fetch(`/api/file?path=${encodeURIComponent(filePath)}`, {
+              method: 'DELETE',
+          });
+          if (res.ok) {
+              router.push('/'); // 回首頁
+              router.refresh();
+          } else {
+              alert('刪除失敗');
+          }
+      } catch (e) {
+          alert('刪除失敗');
+      }
   };
 
-  // 鍵盤捷徑 (Cmd+S 儲存)
+  // 鍵盤捷徑
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         if (isEditing) handleSave();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+          e.preventDefault();
+          setIsEditing(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -117,15 +173,27 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#1e1e1e] h-full overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-[#1e1e1e] h-full overflow-hidden relative transition-all">
         <FloatingToolbar sourceFile={filePath} />
         <CopilotPanel currentFileContent={content} />
+        
         {/* 工具列 */}
         <div className="flex justify-between items-center px-8 py-4 border-b border-gray-800 bg-[#1e1e1e] sticky top-0 z-10">
             <h1 className="text-xl font-bold text-gray-200 truncate flex-1 mr-4">
                 {filePath.split('/').pop()?.replace('.md', '')}
             </h1>
             <div className="flex gap-2">
+                {/* 大綱開關 */}
+                {toc.length > 0 && !isEditing && (
+                    <button
+                        onClick={() => setShowToc(!showToc)}
+                        className={`p-2 rounded transition-colors ${showToc ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                        title="大綱"
+                    >
+                        <List size={20} />
+                    </button>
+                )}
+
                 {isEditing ? (
                     <>
                         <button 
@@ -150,17 +218,17 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
                     </>
                 ) : (
                     <>
-                        {/* <button 
+                        <button 
                             onClick={handleDelete}
                             className="p-2 text-gray-400 hover:text-red-400 rounded hover:bg-gray-800 transition-colors"
                             title="刪除"
                         >
                             <Trash2 size={20} />
-                        </button> */}
+                        </button>
                         <button 
                             onClick={() => setIsEditing(true)}
                             className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded font-medium transition-colors"
-                            title="編輯"
+                            title="編輯 (Cmd+E)"
                         >
                             <Pencil size={18} />
                             <span>編輯</span>
@@ -170,28 +238,47 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
             </div>
         </div>
 
-        {/* 編輯區 / 閱讀區 */}
-        <div className="flex-1 overflow-y-auto">
-            <div className="max-w-3xl mx-auto py-8 px-8 h-full">
-                {isEditing ? (
-                    <textarea 
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        className="w-full h-full min-h-[500px] bg-[#1e1e1e] text-gray-300 font-mono text-base focus:outline-none resize-none"
-                        placeholder="開始寫作..."
-                        autoFocus
-                    />
-                ) : (
-                    <div className="prose prose-invert prose-pre:bg-[#2d2d2d] max-w-none pb-20">
-                        <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeHighlight]}
-                        >
-                            {content}
-                        </ReactMarkdown>
-                    </div>
-                )}
+        {/* 內容區 + 大綱區 */}
+        <div className="flex flex-1 overflow-hidden">
+            {/* 編輯器/閱讀器 */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="max-w-3xl mx-auto py-8 px-8 min-h-full">
+                    {isEditing ? (
+                        <textarea 
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            className="w-full h-full min-h-[500px] bg-[#1e1e1e] text-gray-300 font-mono text-base focus:outline-none resize-none"
+                            placeholder="開始寫作..."
+                            autoFocus
+                        />
+                    ) : (
+                        <div className="prose prose-invert prose-pre:bg-[#2d2d2d] max-w-none pb-20">
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeHighlight]}
+                            >
+                                {processWikiLinks(content)}
+                            </ReactMarkdown>
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {/* 大綱面板 */}
+            {showToc && !isEditing && (
+                <div className="w-64 border-l border-gray-800 bg-[#1a1a1a] overflow-y-auto p-4 hidden lg:block animate-in slide-in-from-right duration-200">
+                    <h3 className="font-bold text-gray-400 text-sm mb-4 uppercase">Table of Contents</h3>
+                    <ul className="space-y-2 text-sm">
+                        {toc.map((item, i) => (
+                            <li key={i} style={{ paddingLeft: `${(item.level - 1) * 12}px` }}>
+                                <a href="#" className="text-gray-400 hover:text-blue-400 block truncate transition-colors">
+                                    {item.text}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
     </div>
   );
