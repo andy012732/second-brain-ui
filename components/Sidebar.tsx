@@ -59,7 +59,8 @@ const FileTreeItem = ({ node, level = 0, currentPath }: { node: FileNode; level?
 };
 
 import QuickCapture from './QuickCapture';
-import { Search } from 'lucide-react';
+import { Search, Calendar } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function Sidebar() {
   const [tree, setTree] = useState<FileNode[]>([]);
@@ -68,12 +69,25 @@ export default function Sidebar() {
   const [isSearching, setIsSearching] = useState(false);
   const searchParams = useSearchParams();
   const currentPath = searchParams.get('file');
+  const router = useRouter();
 
   useEffect(() => {
     fetch('/api/tree')
       .then((res) => res.json())
       .then((data) => setTree(data));
   }, []);
+
+  const handleDailyReview = async () => {
+      try {
+          const res = await fetch('/api/review');
+          if (res.ok) {
+              const file = await res.json();
+              router.push(`/?file=${encodeURIComponent(file.path)}`);
+          }
+      } catch (e) {
+          alert('Failed to load review');
+      }
+  };
 
   // 搜尋處理
   useEffect(() => {
@@ -118,6 +132,15 @@ export default function Sidebar() {
 
       <QuickCapture />
       
+      {/* Daily Review Button */}
+      <button 
+        onClick={handleDailyReview}
+        className="mx-4 mt-2 flex items-center justify-center gap-2 py-2 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded transition-colors"
+      >
+          <Calendar size={14} />
+          <span>Daily Review</span>
+      </button>
+
       <div className="flex-1 overflow-y-auto py-2">
         {/* 搜尋結果模式 */}
         {searchQuery ? (

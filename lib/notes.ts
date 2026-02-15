@@ -197,6 +197,38 @@ async function putGitHubFile(filePath: string, content: string) {
   }
 }
 
+// 實作 GitHub 刪除
+async function deleteGitHubFile(filePath: string) {
+  if (!octokit || !GITHUB_OWNER || !GITHUB_REPO) throw new Error('GitHub config missing');
+
+  try {
+    // 1. 取得 SHA (刪除需要 SHA)
+    const { data } = await octokit.repos.getContent({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: filePath,
+      ref: GITHUB_BRANCH,
+    });
+
+    if (Array.isArray(data) || !('sha' in data)) throw new Error('File not found');
+
+    // 2. 刪除檔案
+    await octokit.repos.deleteFile({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: filePath,
+      message: `feat(delete): remove ${filePath} via Second Brain UI`,
+      branch: GITHUB_BRANCH,
+      sha: data.sha,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('GitHub Delete Error:', error);
+    throw new Error('Failed to delete from GitHub');
+  }
+}
+
 // 實作本地寫入
 async function saveLocalFile(filePath: string, content: string) {
     const absolutePath = path.join(NOTES_PATH, filePath);
@@ -209,6 +241,20 @@ async function saveLocalFile(filePath: string, content: string) {
     return { success: true, modifiedAt: stats.mtime.toISOString() };
 }
 
+// 實作本地刪除
+async function deleteLocalFile(filePath: string) {
+    const absolutePath = path.join(NOTES_PATH, filePath);
+    // Move to .trash instead of delete
+    const trashPath = path.join(NOTES_PATH, '.trash', path.basename(filePath));
+    await fs.mkdir(path.dirname(trashPath), { recursive: true });
+    await fs.rename(absolutePath, trashPath);
+    return { success: true };
+}
+
 export async function saveFileContent(filePath: string, content: string) {
     return isGitHubMode() ? putGitHubFile(filePath, content) : saveLocalFile(filePath, content);
+}
+
+export async function deleteFile(filePath: string) {
+    return isGitHubMode() ? deleteGitHubFile(filePath) : deleteLocalFile(filePath);
 }
