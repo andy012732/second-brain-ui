@@ -7,6 +7,8 @@ import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
 import { Pencil, Save, X, Loader2, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import FloatingToolbar from './FloatingToolbar';
+import CopilotPanel from './CopilotPanel';
 
 interface MarkdownViewerProps {
   filePath: string;
@@ -116,6 +118,8 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
 
   return (
     <div className="flex-1 flex flex-col bg-[#1e1e1e] h-full overflow-hidden relative">
+        <FloatingToolbar sourceFile={filePath} />
+        <CopilotPanel currentFileContent={content} />
         {/* 工具列 */}
         <div className="flex justify-between items-center px-8 py-4 border-b border-gray-800 bg-[#1e1e1e] sticky top-0 z-10">
             <h1 className="text-xl font-bold text-gray-200 truncate flex-1 mr-4">
