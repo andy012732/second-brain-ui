@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { ChevronRight, ChevronDown, FileText, Folder } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { ChevronRight, ChevronDown, FileText, Folder, Search, Calendar, Book } from 'lucide-react';
 import clsx from 'clsx';
+import QuickCapture from './QuickCapture';
 
 interface FileNode {
   name: string;
@@ -57,11 +58,6 @@ const FileTreeItem = ({ node, level = 0, currentPath }: { node: FileNode; level?
     </Link>
   );
 };
-
-import QuickCapture from './QuickCapture';
-import { Search, Calendar, Book } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 export default function Sidebar() {
   const [tree, setTree] = useState<FileNode[]>([]);
