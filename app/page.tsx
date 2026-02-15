@@ -10,9 +10,20 @@ export default async function Home({
 }) {
   const params = await searchParams;
   return (
-    <main className="flex h-screen w-screen bg-black text-gray-200 overflow-hidden">
-      <Sidebar />
-      <MarkdownViewer filePath={params.file || ''} />
-    </main>
+    <div className="flex flex-col h-screen w-screen bg-black text-gray-200 overflow-hidden">
+      <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4">
+        <h1 className="font-bold text-lg">德谷拉指揮中心</h1>
+        <nav>
+          <ul className="flex items-center space-x-4">
+            <li><a href="/" className="hover:text-gray-400">Second Brain</a></li>
+            <li><a href="/kanban" className="hover:text-gray-400">Kanban</a></li>
+          </ul>
+        </nav>
+      </header>
+      <main className="flex flex-1 h-full">
+        <Sidebar />
+        <MarkdownViewer filePath={params.file || ''} />
+      </main>
+    </div>
   );
 }
