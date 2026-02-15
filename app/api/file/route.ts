@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFileContent, saveFileContent, deleteFile } from '@/lib/notes';
+import { MANUAL_CONTENT } from '@/lib/manual';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,15 @@ export async function GET(request: NextRequest) {
 
   if (!path) {
     return NextResponse.json({ error: 'Path is required' }, { status: 400 });
+  }
+
+  // 攔截說明書請求
+  if (path === '__MANUAL__') {
+      return NextResponse.json({
+          content: MANUAL_CONTENT,
+          frontmatter: { title: 'Second Brain 使用手冊' },
+          modifiedAt: new Date().toISOString()
+      });
   }
 
   try {

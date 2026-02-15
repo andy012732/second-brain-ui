@@ -59,8 +59,9 @@ const FileTreeItem = ({ node, level = 0, currentPath }: { node: FileNode; level?
 };
 
 import QuickCapture from './QuickCapture';
-import { Search, Calendar } from 'lucide-react';
+import { Search, Calendar, Book } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Sidebar() {
   const [tree, setTree] = useState<FileNode[]>([]);
@@ -133,13 +134,23 @@ export default function Sidebar() {
       <QuickCapture />
       
       {/* Daily Review Button */}
-      <button 
-        onClick={handleDailyReview}
-        className="mx-4 mt-2 flex items-center justify-center gap-2 py-2 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded transition-colors"
-      >
-          <Calendar size={14} />
-          <span>Daily Review</span>
-      </button>
+      <div className="flex gap-2 mx-4 mt-2">
+        <button 
+            onClick={handleDailyReview}
+            className="flex-1 flex items-center justify-center gap-2 py-2 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded transition-colors"
+            title="隨機回顧"
+        >
+            <Calendar size={14} />
+            <span>Daily Review</span>
+        </button>
+        <Link
+            href="/?file=__MANUAL__"
+            className="flex items-center justify-center p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+            title="使用手冊"
+        >
+            <Book size={14} />
+        </Link>
+      </div>
 
       <div className="flex-1 overflow-y-auto py-2">
         {/* 搜尋結果模式 */}
