@@ -146,6 +146,13 @@ export default function Sidebar() {
         >
             <Book size={14} />
         </Link>
+        <Link
+            href="/kanban"
+            className="flex items-center justify-center p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
+            title="Kanban Dashboard"
+        >
+            <Book size={14} />
+        </Link>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
