@@ -76,7 +76,7 @@ export default function MarkdownViewer({ filePath }: MarkdownViewerProps) {
       const lines = md.split('\n');
       const items: TocItem[] = [];
       lines.forEach((line, index) => {
-          const match = line.match(^(#{1,6})\s+(.*));
+          const match = line.match(/^(#{1,6})\s+(.*)/);
           if (match) {
               items.push({
                   level: match[1].length,
