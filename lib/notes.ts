@@ -158,8 +158,57 @@ export async function getFileContent(path: string) {
   return isGitHubMode() ? getGitHubFile(path) : getLocalFile(path);
 }
 
-export async function saveFileContent(path: string, content: string) {
-    // 這裡還沒實作 GitHub 寫入，因為學長目前需求是讀取為主
-    // 之後如果要在網頁編輯，我們再加 putGitHubFile
-    return { success: false, message: "GitHub Write not implemented yet" };
+// 實作 GitHub 寫入
+async function putGitHubFile(filePath: string, content: string) {
+  if (!octokit || !GITHUB_OWNER || !GITHUB_REPO) throw new Error('GitHub config missing');
+
+  try {
+    // 1. 先嘗試取得檔案 (為了拿到 SHA，如果是更新的話)
+    let sha: string | undefined;
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner: GITHUB_OWNER,
+        repo: GITHUB_REPO,
+        path: filePath,
+        ref: GITHUB_BRANCH,
+      });
+      if (!Array.isArray(data) && 'sha' in data) {
+        sha = data.sha;
+      }
+    } catch (e) {
+      // 檔案不存在，代表是新增，忽略錯誤
+    }
+
+    // 2. 建立或更新檔案
+    await octokit.repos.createOrUpdateFileContents({
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO,
+      path: filePath,
+      message: `feat(capture): update ${filePath} via Second Brain UI`,
+      content: Buffer.from(content).toString('base64'),
+      branch: GITHUB_BRANCH,
+      sha: sha, // 如果是新增，sha 為 undefined
+    });
+
+    return { success: true, modifiedAt: new Date().toISOString() };
+  } catch (error) {
+    console.error('GitHub Write Error:', error);
+    throw new Error('Failed to write to GitHub');
+  }
+}
+
+// 實作本地寫入
+async function saveLocalFile(filePath: string, content: string) {
+    const absolutePath = path.join(NOTES_PATH, filePath);
+    
+    // 確保目錄存在
+    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+    
+    await fs.writeFile(absolutePath, content, 'utf-8');
+    const stats = await fs.stat(absolutePath);
+    return { success: true, modifiedAt: stats.mtime.toISOString() };
+}
+
+export async function saveFileContent(filePath: string, content: string) {
+    return isGitHubMode() ? putGitHubFile(filePath, content) : saveLocalFile(filePath, content);
 }

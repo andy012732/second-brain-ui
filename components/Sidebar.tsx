@@ -58,6 +58,8 @@ const FileTreeItem = ({ node, level = 0, currentPath }: { node: FileNode; level?
   );
 };
 
+import QuickCapture from './QuickCapture';
+
 export default function Sidebar() {
   const [tree, setTree] = useState<FileNode[]>([]);
   const searchParams = useSearchParams();
@@ -74,6 +76,7 @@ export default function Sidebar() {
       <div className="p-4 border-b border-gray-800">
         <h1 className="font-bold text-lg text-gray-200">Second Brain</h1>
       </div>
+      <QuickCapture />
       <div className="flex-1 overflow-y-auto py-2">
         {tree.map((node) => (
           <FileTreeItem key={node.path} node={node} currentPath={currentPath} />
