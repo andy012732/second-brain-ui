@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Target, CheckCircle, BarChart2 } from 'lucide-react';
+import { Plus, Target, CheckCircle } from 'lucide-react';
 import { Task } from '@/lib/kanban';
 import CreateTaskModal from '@/components/CreateTaskModal';
 import TaskDetailModal from '@/components/TaskDetailModal';
@@ -31,38 +31,28 @@ export default function KanbanPage() {
     } catch (e) { console.error('Fetch failed'); }
   };
 
-  // 🚀 優化方案：局部局部狀態更新 (Optimistic Update)
   const handleTaskMoved = async (taskId: string, newStatus: string, newOrder: number) => {
     if (newOrder === -1) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || task.status === newStatus) return;
 
-    // 1. 立即更新本地 UI (0ms 延遲)
-    setTasks(prev => {
-      return prev.map(t => t.id === taskId ? { ...t, status: newStatus as any, updatedAt: new Date().toISOString() } : t);
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus as any, updatedAt: new Date().toISOString() } : t));
+    await fetch(`/api/tasks/${taskId}/actions`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'move', status: newStatus })
     });
-
-    // 2. 後台靜默同步 GitHub
-    try {
-      await fetch(`/api/tasks/${taskId}/actions`, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'move', status: newStatus })
-      });
-    } catch (e) {
-      console.error('Sync failed, rolling back...');
-      fetchTasks(); // 失敗才強制刷新
-    }
   };
 
-  // 🚀 局部更新任務內容
+  // 🚀 精準型別定義：(updated: Task)
   const updateLocalTask = (updatedTask: Task) => {
     setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
     if (selectedTask?.id === updatedTask.id) setSelectedTask(updatedTask);
   };
 
   const doneCount = tasks.filter(t => t.status === 'done').length;
-  const completionRate = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
 
   return (
-    <div className="h-screen w-full bg-[#0a0a0a] flex flex-col overflow-hidden text-gray-200 font-sans">
+    <div className="h-screen w-full bg-[#0a0a0a] flex flex-col overflow-hidden text-gray-200">
       <div className="h-20 px-8 flex items-center justify-between border-b border-white/5 bg-[#111]">
           <div className="flex gap-10">
               <div className="flex items-center gap-3">
@@ -88,7 +78,7 @@ export default function KanbanPage() {
           </button>
       </div>
 
-      <div className="flex-1 overflow-x-auto p-8 bg-[#0a0a0a] space-x-6 flex">
+      <div className="flex-1 overflow-x-auto p-8 bg-[#0a0a0a] flex space-x-6">
           {COLUMNS.map(col => (
             <KanbanColumn
               key={col.id}
@@ -101,7 +91,7 @@ export default function KanbanPage() {
           ))}
       </div>
 
-      {isCreateModalOpen && <CreateTaskModal onClose={() => setIsCreateModalOpen(false)} onTaskCreated={(newTask) => {
+      {isCreateModalOpen && <CreateTaskModal onClose={() => setIsCreateModalOpen(false)} onTaskCreated={(newTask: Task) => {
           if (newTask) setTasks(prev => [newTask, ...prev]);
           setIsCreateModalOpen(false);
       }} />}
@@ -109,7 +99,7 @@ export default function KanbanPage() {
       {selectedTask && <TaskDetailModal 
           task={selectedTask} 
           onClose={() => setSelectedTask(null)} 
-          onTaskUpdated={(updated) => updated ? updateLocalTask(updated) : fetchTasks()} 
+          onTaskUpdated={(updated: Task) => updateLocalTask(updated)} 
       />}
     </div>
   );
