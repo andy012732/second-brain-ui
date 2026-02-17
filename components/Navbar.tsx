@@ -25,7 +25,7 @@ export default function Navbar() {
             <div className="p-1.5 bg-blue-600 rounded-lg">
                 <ShieldCheck size={20} className="text-white" />
             </div>
-            <span className="text-xs font-black text-white uppercase tracking-[0.2em] lg:block hidden">Dracula Command</span>
+            <span className="text-xs font-black text-white uppercase tracking-[0.2em] lg:block hidden">德谷拉指揮中心</span>
         </div>
 
         {/* 主選單 */}
