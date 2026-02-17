@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, BookOpen, Kanban, Calendar, Search, ShieldCheck, BarChart3, LineChart } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Kanban, Calendar, Search, ShieldCheck, BarChart3, LineChart, DollarSign } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const NAV_ITEMS = [
