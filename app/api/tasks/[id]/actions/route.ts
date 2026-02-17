@@ -10,10 +10,11 @@ function corsHeaders() {
   };
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { action, ...data } = await req.json();
   const tasks = await getTasks();
-  const index = tasks.findIndex(t => t.id === params.id);
+  const index = tasks.findIndex(t => t.id === id);
   
   if (index === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -22,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   } else if (action === 'comment') {
     tasks[index].comments.push({
       id: uuidv4(),
-      taskId: params.id,
+      taskId: id,
       content: data.content,
       parentId: data.parentId || null,
       createdAt: new Date().toISOString(),
