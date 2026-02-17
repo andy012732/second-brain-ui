@@ -1,12 +1,30 @@
 import { Octokit } from '@octokit/rest';
-import matter from 'gray-matter';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'andy012732';
-const GITHUB_REPO = 'my-notes'; // 存放資料的私有倉庫
+const GITHUB_REPO = 'my-notes'; 
 const GITHUB_BRANCH = 'main';
 
 const octokit = GITHUB_TOKEN ? new Octokit({ auth: GITHUB_TOKEN }) : null;
+
+// 🟢 補齊所有導出的型別
+export interface Attachment {
+  id: string;
+  name: string;
+  type: 'image' | 'pdf' | 'text' | 'other';
+  url: string;
+  size: number;
+  createdAt: string;
+}
+
+export interface Comment {
+  id: string;
+  taskId: string;
+  content: string;
+  parentId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Task {
   id: string;
@@ -17,8 +35,8 @@ export interface Task {
   tags: string[];
   dueDate?: string | null;
   isPinned: boolean;
-  attachments: any[];
-  comments: any[];
+  attachments: Attachment[];
+  comments: Comment[];
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -36,7 +54,6 @@ export async function getTasks(): Promise<Task[]> {
     const content = Buffer.from(data.content, 'base64').toString();
     return JSON.parse(content);
   } catch (e) {
-    console.error('Failed to fetch tasks from GitHub, returning empty array');
     return [];
   }
 }
@@ -44,7 +61,6 @@ export async function getTasks(): Promise<Task[]> {
 export async function saveTasks(tasks: Task[]): Promise<void> {
   if (!octokit) return;
   try {
-    // 先取得檔案的 current SHA
     let sha;
     try {
       const { data }: any = await octokit.repos.getContent({
@@ -61,7 +77,7 @@ export async function saveTasks(tasks: Task[]): Promise<void> {
       owner: GITHUB_OWNER,
       repo: GITHUB_REPO,
       path: 'tasks.json',
-      message: '📊 Update Kanban tasks via Second Brain UI',
+      message: '📊 Update Kanban tasks',
       content: Buffer.from(content).toString('base64'),
       sha,
       branch: GITHUB_BRANCH,
