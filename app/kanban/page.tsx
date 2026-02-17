@@ -8,12 +8,12 @@ import TaskDetailModal from '@/components/TaskDetailModal';
 import KanbanColumn from '@/components/KanbanColumn';
 
 const COLUMNS = [
-  { id: 'todo', title: 'Todo', color: 'border-gray-500' },
-  { id: 'ongoing', title: 'Ongoing', color: 'border-blue-500' },
-  { id: 'pending', title: 'Pending', color: 'border-yellow-500' },
-  { id: 'review', title: 'Review', color: 'border-purple-500' },
-  { id: 'done', title: 'Done', color: 'border-green-500' },
-  { id: 'archive', title: 'Archive', color: 'border-gray-700' },
+  { id: 'todo', title: '待辦事項', color: 'border-gray-500' },
+  { id: 'ongoing', title: '進行中', color: 'border-blue-500' },
+  { id: 'pending', title: '等待中', color: 'border-yellow-500' },
+  { id: 'review', title: '審核中', color: 'border-purple-500' },
+  { id: 'done', title: '已完成', color: 'border-green-500' },
+  { id: 'archive', title: '封存', color: 'border-gray-700' },
 ] as const;
 
 export default function KanbanPage() {
@@ -43,7 +43,6 @@ export default function KanbanPage() {
     });
   };
 
-  // 🚀 精準型別定義：(updated: Task)
   const updateLocalTask = (updatedTask: Task) => {
     setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
     if (selectedTask?.id === updatedTask.id) setSelectedTask(updatedTask);
@@ -58,23 +57,23 @@ export default function KanbanPage() {
               <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20"><Target className="text-blue-500" size={20} /></div>
                   <div>
-                    <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Total Intelligence</div>
+                    <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest">總任務數 (Total)</div>
                     <div className="text-xl font-mono font-bold leading-tight tabular-nums">{tasks.length}</div>
                   </div>
               </div>
               <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-green-500/10 rounded-xl border border-green-500/20"><CheckCircle className="text-green-500" size={20} /></div>
                   <div>
-                    <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Successful Ops</div>
+                    <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest">已攻克任務 (Done)</div>
                     <div className="text-xl font-mono font-bold leading-tight text-white tabular-nums">{doneCount}</div>
                   </div>
               </div>
           </div>
           <button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-[#0055ff] hover:bg-blue-500 text-white font-black text-[10px] px-8 py-3 rounded-full flex items-center gap-2 transition-all shadow-[0_0_40px_rgba(37,99,235,0.2)] hover:scale-105 active:scale-95 tracking-[0.2em] uppercase"
+            className="bg-[#0055ff] hover:bg-blue-500 text-white font-black text-xs px-8 py-3 rounded-full flex items-center gap-2 transition-all shadow-[0_0_40px_rgba(37,99,235,0.2)] hover:scale-105 active:scale-95 tracking-[0.2em] uppercase"
           >
-              <Plus size={16} /> <span>Initiate Mission</span>
+              <Plus size={16} /> <span>發起新任務</span>
           </button>
       </div>
 
