@@ -3,7 +3,7 @@ import path from 'path';
 
 const KANBAN_TASKS_PATH = process.env.KANBAN_TASKS_PATH || 'tasks.json';
 
-interface Task {
+export interface Task {
   id: string;
   title: string;
   description?: string;
@@ -19,7 +19,7 @@ interface Task {
   updatedAt: string;
 }
 
-interface Attachment {
+export interface Attachment {
   id: string;
   name: string;
   type: 'image' | 'pdf' | 'text' | 'other';
@@ -28,7 +28,7 @@ interface Attachment {
   createdAt: string;
 }
 
-interface Comment {
+export interface Comment {
   id: string;
   taskId: string;
   content: string;
