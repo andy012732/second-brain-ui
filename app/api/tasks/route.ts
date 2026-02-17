@@ -4,24 +4,28 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const dynamic = 'force-dynamic';
 
-function corsHeaders() {
+// 🚀 強制開啟 CORS 通行證
+function getCorsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json'
   };
 }
 
 export async function GET() {
   const tasks = await getTasks();
-  return NextResponse.json(tasks, { headers: corsHeaders() });
+  return new NextResponse(JSON.stringify(tasks), {
+    status: 200,
+    headers: getCorsHeaders()
+  });
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const tasks = await getTasks();
-    
     const newTask: Task = {
       id: uuidv4(),
       title: body.title,
@@ -37,15 +41,23 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-
     tasks.push(newTask);
     await saveTasks(tasks);
-    return NextResponse.json(newTask, { headers: corsHeaders() });
+    return new NextResponse(JSON.stringify(newTask), {
+      status: 201,
+      headers: getCorsHeaders()
+    });
   } catch (e) {
-    return NextResponse.json({ error: 'Failed to create task' }, { status: 500, headers: corsHeaders() });
+    return new NextResponse(JSON.stringify({ error: 'Failed' }), {
+      status: 500,
+      headers: getCorsHeaders()
+    });
   }
 }
 
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders() });
+  return new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders()
+  });
 }
