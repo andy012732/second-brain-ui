@@ -13,6 +13,7 @@ interface KanbanColumnProps {
   };
   tasks: Task[];
   onTaskMoved: (taskId: string, newStatus: string, newOrder: number) => void;
+  onTaskClick: (task: Task) => void; // 新增：傳遞點擊事件
   onRefresh: () => void;
 }
 
@@ -20,12 +21,12 @@ export default function KanbanColumn({
   column,
   tasks,
   onTaskMoved,
+  onTaskClick,
   onRefresh,
 }: KanbanColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  // 排序
   const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -68,13 +69,14 @@ export default function KanbanColumn({
             <TaskCard 
               key={task.id} 
               task={task} 
-              onDragStart={(id) => onTaskMoved(id, column.id, -1)} // 這裡會傳遞給父層處理
+              onDragStart={(id) => onTaskMoved(id, column.id, -1)}
+              onClick={onTaskClick} // 點擊時呼叫
             />
           ))}
           {sortedTasks.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
               <div className="border-2 border-dashed border-gray-600 rounded-xl w-full h-20 flex items-center justify-center">
-                <span className="text-[10px] font-bold">DROP HERE</span>
+                <span className="text-[10px] font-bold">EMPTY</span>
               </div>
             </div>
           )}
