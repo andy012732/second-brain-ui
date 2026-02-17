@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Calendar, MessageSquare, Star } from 'lucide-react';
 import { Task } from '@/lib/kanban';
+import CreateTaskModal from '@/components/CreateTaskModal';
 
 const COLUMNS = [
   { id: 'todo', title: 'Todo', color: 'border-gray-500' },
@@ -25,6 +26,7 @@ const priorityColors: Record<string, string> = {
 export default function KanbanPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -47,7 +49,6 @@ export default function KanbanPage() {
     const task = tasks.find(t => t.id === draggedId);
     if (!task || task.status === status) return;
 
-    // 樂觀更新
     setTasks(prev => prev.map(t => t.id === draggedId ? { ...t, status } : t));
 
     await fetch(`/api/tasks/${draggedId}/actions`, {
@@ -55,6 +56,11 @@ export default function KanbanPage() {
       body: JSON.stringify({ action: 'move', status })
     });
     setDraggedId(null);
+  };
+
+  const handleTaskCreated = () => {
+    setIsModalOpen(false);
+    fetchTasks();
   };
 
   const renderCard = (task: Task) => (
@@ -108,7 +114,10 @@ export default function KanbanPage() {
                   <span className="text-green-500 font-bold">{tasks.filter(t => t.status === 'done').length}</span>
               </div>
           </div>
-          <button className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors"
+          >
               <Plus size={14} /> New Task
           </button>
       </div>
@@ -133,6 +142,13 @@ export default function KanbanPage() {
           ))}
         </div>
       </div>
+
+      {isModalOpen && (
+        <CreateTaskModal 
+          onClose={() => setIsModalOpen(false)} 
+          onTaskCreated={handleTaskCreated} 
+        />
+      )}
     </div>
   );
 }
