@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 
 const NAV_ITEMS = [
   { name: '總控制台', href: '/', icon: LayoutDashboard },
+  { name: '業績指揮部', href: '/revenue', icon: DollarSign }, // 🚀 新增！
   { name: '進度看板', href: '/kanban', icon: Kanban },
   { name: '內容分析', href: '/analytics', icon: BarChart3 },
   { name: '美股觀察', href: '/stocks', icon: LineChart },
