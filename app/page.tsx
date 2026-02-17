@@ -56,7 +56,7 @@ export default function MissionControl() {
               <div key={act.id} className="relative pl-6 border-l border-blue-500/20 py-1 mb-6">
                 <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]" />
                 <span className="text-[8px] font-bold text-blue-500/50 block mb-1 uppercase">
-                   {new Date(act.created_at).toLocaleTimeString('zh-TW', { hour12: false })}
+                   {act.created_at ? new Date(act.created_at).toLocaleTimeString('zh-TW', { hour12: false }) : 'JUST NOW'}
                 </span>
                 <h3 className="text-xs font-bold text-gray-200 leading-snug">{act.title}</h3>
                 <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">{act.description}</p>
