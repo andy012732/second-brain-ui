@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, MoreHorizontal, Calendar, MessageSquare, Paperclip, Star, AlertCircle } from 'lucide-react';
+import { Plus, Calendar, MessageSquare, Star } from 'lucide-react';
+import { Task } from '@/lib/kanban';
 
 const COLUMNS = [
   { id: 'todo', title: 'Todo', color: 'border-gray-500' },
@@ -10,9 +11,11 @@ const COLUMNS = [
   { id: 'review', title: 'Review', color: 'border-purple-500' },
   { id: 'done', title: 'Done', color: 'border-green-500' },
   { id: 'archive', title: 'Archive', color: 'border-gray-700' },
-];
+] as const;
 
-const priorityColors = {
+type ColumnId = typeof COLUMNS[number]['id'];
+
+const priorityColors: Record<string, string> = {
   low: 'bg-blue-500',
   medium: 'bg-yellow-500',
   high: 'bg-orange-500',
@@ -20,25 +23,29 @@ const priorityColors = {
 };
 
 export default function KanbanPage() {
-  const [tasks, setTasks] = useState([]);
-  const [draggedId, setDraggedId] = useState(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTasks();
   }, []);
 
   const fetchTasks = async () => {
-    const res = await fetch('/api/tasks');
-    const data = await res.json();
-    setTasks(data);
+    try {
+      const res = await fetch('/api/tasks');
+      const data = await res.json();
+      setTasks(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Fetch failed');
+    }
   };
 
-  const onDragStart = (id) => setDraggedId(id);
+  const onDragStart = (id: string) => setDraggedId(id);
   
-  const onDrop = async (status) => {
+  const onDrop = async (status: ColumnId) => {
     if (!draggedId) return;
     const task = tasks.find(t => t.id === draggedId);
-    if (task.status === status) return;
+    if (!task || task.status === status) return;
 
     // 樂觀更新
     setTasks(prev => prev.map(t => t.id === draggedId ? { ...t, status } : t));
@@ -50,7 +57,7 @@ export default function KanbanPage() {
     setDraggedId(null);
   };
 
-  const renderCard = (task) => (
+  const renderCard = (task: Task) => (
     <div
       key={task.id}
       draggable
@@ -58,13 +65,13 @@ export default function KanbanPage() {
       className="bg-[#1e1e1e] p-3 rounded-lg border border-gray-800 mb-3 cursor-grab active:cursor-grabbing hover:border-gray-600 transition-all shadow-md group"
     >
       <div className="flex justify-between items-start mb-2">
-        <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} />
+        <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority] || 'bg-gray-500'}`} />
         {task.isPinned && <Star size={12} className="text-yellow-500 fill-current" />}
       </div>
       <h3 className="text-sm font-semibold text-gray-200 mb-2">{task.title}</h3>
       
       <div className="flex flex-wrap gap-1 mb-3">
-        {task.tags.map(tag => (
+        {task.tags?.map((tag: string) => (
           <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 capitalize">{tag}</span>
         ))}
       </div>
@@ -77,7 +84,7 @@ export default function KanbanPage() {
               <span>{new Date(task.dueDate).toLocaleDateString()}</span>
             </div>
           )}
-          {task.comments.length > 0 && (
+          {task.comments?.length > 0 && (
             <div className="flex items-center gap-0.5">
               <MessageSquare size={10} />
               <span>{task.comments.length}</span>
@@ -89,8 +96,7 @@ export default function KanbanPage() {
   );
 
   return (
-    <div className="h-screen w-full bg-black flex flex-col overflow-hidden">
-      {/* 統計列 */}
+    <div className="h-screen w-full bg-black flex flex-col overflow-hidden text-gray-200">
       <div className="h-16 px-6 flex items-center justify-between border-b border-gray-800 bg-[#161616]">
           <div className="flex gap-6">
               <div className="text-xs">
@@ -107,7 +113,6 @@ export default function KanbanPage() {
           </button>
       </div>
 
-      {/* 看板主體 */}
       <div className="flex-1 overflow-x-auto p-6 bg-black">
         <div className="flex gap-4 h-full min-w-max">
           {COLUMNS.map(col => (
@@ -121,7 +126,7 @@ export default function KanbanPage() {
                 <h2 className="text-xs font-bold text-gray-300 uppercase tracking-wider">{col.title}</h2>
                 <span className="text-[10px] bg-gray-800 px-1.5 py-0.5 rounded text-gray-500">{tasks.filter(t => t.status === col.id).length}</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+              <div className="flex-1 overflow-y-auto p-2">
                 {tasks.filter(t => t.status === col.id).map(task => renderCard(task))}
               </div>
             </div>
