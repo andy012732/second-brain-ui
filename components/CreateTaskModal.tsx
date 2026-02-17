@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Calendar, Flag, Plus, Tag, ChevronDown } from 'lucide-react';
+import { X, Calendar, Flag, Plus, Tag, ChevronDown, Star } from 'lucide-react';
 
 interface CreateTaskModalProps {
   onClose: () => void;
