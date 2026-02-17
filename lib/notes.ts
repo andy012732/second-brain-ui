@@ -258,3 +258,4 @@ export async function saveFileContent(filePath: string, content: string) {
 export async function deleteFile(filePath: string) {
     return isGitHubMode() ? deleteGitHubFile(filePath) : deleteLocalFile(filePath);
 }
+// Trigger Vercel Sync
