@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import TaskCard from './TaskCard';
 import { Task } from '@/lib/kanban';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface KanbanColumnProps {
   column: {
@@ -13,7 +13,6 @@ interface KanbanColumnProps {
   };
   tasks: Task[];
   onTaskMoved: (taskId: string, newStatus: string, newOrder: number) => void;
-  onTaskUpdated: () => void;
   onRefresh: () => void;
 }
 
@@ -21,13 +20,12 @@ export default function KanbanColumn({
   column,
   tasks,
   onTaskMoved,
-  onTaskUpdated,
   onRefresh,
 }: KanbanColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  // 按照 order 排序任務
+  // 排序
   const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -35,103 +33,53 @@ export default function KanbanColumn({
     setIsDraggingOver(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDraggingOver(false);
-  };
+  const handleDragLeave = () => setIsDraggingOver(false);
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(false);
-    
     const taskId = e.dataTransfer.getData('taskId');
-    const oldStatus = e.dataTransfer.getData('oldStatus');
-    
-    if (!taskId || oldStatus === column.id) return;
-
-    try {
-      // 將任務移動到此欄位的最後位置
-      const newOrder = tasks.length;
-      await fetch(`/api/tasks/${taskId}/move`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: column.id, order: newOrder }),
-      });
-      onRefresh();
-    } catch (error) {
-      console.error('Failed to move task:', error);
-    }
-  };
-
-  const handleTaskDrop = (droppedTaskId: string, targetTaskId: string) => {
-    // 在同欄位內重新排序
-    const targetIndex = sortedTasks.findIndex(task => task.id === targetTaskId);
-    if (targetIndex !== -1) {
-      onTaskMoved(droppedTaskId, column.id, targetIndex);
-    }
-  };
-
-  const columnTitleColorMap: Record<string, string> = {
-    todo: 'text-gray-300',
-    ongoing: 'text-blue-300',
-    pending: 'text-yellow-300',
-    review: 'text-purple-300',
-    done: 'text-green-300',
-    archive: 'text-gray-400',
+    if (!taskId) return;
+    onTaskMoved(taskId, column.id, tasks.length);
   };
 
   return (
     <div
-      className={`flex-shrink-0 w-80 rounded-lg border ${column.color} ${isDraggingOver ? 'border-blue-500 border-2' : 'border-gray-800'}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      className={`w-80 flex flex-col bg-[#111]/50 rounded-2xl border transition-all ${isDraggingOver ? 'border-blue-500 bg-blue-500/5' : 'border-gray-800/30'} backdrop-blur-sm shadow-xl`}
     >
-      {/* 欄位標題 */}
-      <div className="p-4 border-b border-gray-800">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <h2 className={`font-bold ${columnTitleColorMap[column.id] || 'text-gray-300'}`}>
-              {column.title}
-            </h2>
-            <span className="bg-gray-800 text-gray-400 text-xs font-medium px-2 py-0.5 rounded-full">
-              {tasks.length}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-1 hover:bg-gray-800 rounded"
-              title={isCollapsed ? 'Expand' : 'Collapse'}
-            >
-              {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-            </button>
-          </div>
+      <div className={`p-4 border-b-2 ${column.color} bg-[#161616]/50 rounded-t-2xl flex justify-between items-center`}>
+        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{column.title}</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono font-bold text-gray-500 px-2 py-0.5 bg-black/40 rounded-full border border-white/5">
+            {tasks.length}
+          </span>
+          <button onClick={() => setIsCollapsed(!isCollapsed)} className="text-gray-600 hover:text-gray-400">
+            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
         </div>
       </div>
-
-      {/* 任務列表 */}
-      <div className={`p-2 ${isCollapsed ? 'hidden' : 'block'}`}>
-        {sortedTasks.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">
-            <p>No tasks yet</p>
-            <p className="text-xs mt-1">Drop tasks here</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {sortedTasks.map((task, index) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onTaskMoved={onTaskMoved}
-                onTaskUpdated={onTaskUpdated}
-                onDrop={handleTaskDrop}
-                index={index}
-                totalTasks={sortedTasks.length}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      
+      {!isCollapsed && (
+        <div className="flex-1 overflow-y-auto p-4 min-h-[150px]">
+          {sortedTasks.map(task => (
+            <TaskCard 
+              key={task.id} 
+              task={task} 
+              onDragStart={(id) => onTaskMoved(id, column.id, -1)} // 這裡會傳遞給父層處理
+            />
+          ))}
+          {sortedTasks.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
+              <div className="border-2 border-dashed border-gray-600 rounded-xl w-full h-20 flex items-center justify-center">
+                <span className="text-[10px] font-bold">DROP HERE</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
