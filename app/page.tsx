@@ -21,32 +21,7 @@ export default function MissionControl() {
   }, []);
 
   return (
-    <div className="h-screen w-full bg-[#030303] text-gray-400 font-sans p-8 flex flex-col overflow-hidden selection:bg-blue-500/30">
-      
-      {/* 🔴 繁體中文 Header */}
-      <header className="flex justify-between items-start mb-12 border-b border-white/5 pb-4 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-blue-600/10 rounded-lg border border-blue-600/20">
-            <Shield className="text-blue-500" size={20} />
-          </div>
-          <div>
-            <h1 className="text-sm font-black text-white tracking-[0.2em] uppercase">德谷拉指揮中心 (Mission Control)</h1>
-            <div className="flex items-center gap-2 mt-1">
-                <div className="w-1 h-1 rounded-full bg-green-500 animate-ping" />
-                <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest">系統狀態：神經連結已建立</span>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-xl font-black text-white tabular-nums tracking-tighter leading-none mb-1">
-            {currentTime.toLocaleTimeString('zh-TW', { hour12: false })}
-          </div>
-          <div className="text-[9px] text-blue-500/40 font-bold tracking-[0.2em] uppercase">
-            {currentTime.toLocaleDateString('zh-TW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </div>
-        </div>
-      </header>
-
+    <div className="h-full w-full bg-[#030303] text-gray-400 font-sans p-8 flex flex-col overflow-hidden selection:bg-blue-500/30">
       <main className="flex-1 grid grid-cols-12 gap-10 overflow-hidden">
         
         {/* 🔴 即時情資流 */}
