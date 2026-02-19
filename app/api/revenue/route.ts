@@ -41,9 +41,11 @@ function calcRevenue(props: any): number {
 
 export async function GET() {
   try {
+    // 台灣時間 UTC+8
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const yesterday = new Date(now.getTime() - 86400000).toISOString().split('T')[0];
+    const twNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    const today = twNow.toISOString().split('T')[0];
+    const yesterday = new Date(twNow.getTime() - 86400000).toISOString().split('T')[0];
     const monthStart = `${today.slice(0, 7)}-01`;
 
     // 抓本月所有資料
@@ -93,13 +95,7 @@ export async function GET() {
         if (!dailyMap[date]) dailyMap[date] = {};
         dailyMap[date][store] = (dailyMap[date][store] || 0) + revenue;
 
-        // 付款方式
-        if (date === today || Object.keys(todayData).length === 0) {
-          paymentTotals['現金'] += getNum(props, '現金');
-          paymentTotals['刷卡'] += getNum(props, '刷卡');
-          paymentTotals['LINEPAY'] += getNum(props, 'LINEPAY');
-          paymentTotals['匯款'] += getNum(props, '匯款');
-        }
+        // 付款方式（月加總，在下方 monthPayment 統一處理）
       }
     }
 
@@ -108,7 +104,8 @@ export async function GET() {
     const startDate = new Date(monthStart);
     const endDate = new Date(today);
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = new Date(d.getTime()).toISOString().split('T')[0];
+      if (dateStr === today) continue; // 今天還沒到上傳時間，不算缺報
       const dayData = dailyMap[dateStr] || {};
       const missing = stores.filter(s => !dayData[s]);
       if (missing.length > 0) {
