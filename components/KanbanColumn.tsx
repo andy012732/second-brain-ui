@@ -135,7 +135,7 @@ export default function KanbanColumn({ column, tasks, onTaskMoved, onTaskClick }
             <TaskCard
               key={task.id}
               task={task}
-              neonColor={column.neon}
+              
               onDragStart={(id) => onTaskMoved(id, column.id, -1)}
               onClick={onTaskClick}
             />
