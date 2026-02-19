@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 const fmt = (n: number) => n >= 10000 ? `$${(n / 10000).toFixed(1)}萬` : `$${n.toLocaleString()}`;
 const pctColor = (pct: number | null) => pct === null ? '#888' : pct > 0 ? '#00ff88' : pct < 0 ? '#ff2244' : '#888';
-const STORE_COLORS: Record<string, string> = { 新豐: '#4488ff', 竹北: '#00ff88', 官網: '#cc44ff' };
+const COLORS: Record<string, string> = { 新豐: '#4488ff', 竹北: '#00ff88', 官網: '#cc44ff' };
 
 export default function RevenuePage() {
   const [data, setData] = useState<any>(null);
@@ -55,6 +55,7 @@ export default function RevenuePage() {
 
   return (
     <div style={{ background: '#0a0a0e', minHeight: '100vh', padding: '32px 40px', fontFamily: 'JetBrains Mono, monospace', color: '#fff' }}>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
           <div style={{ fontSize: 10, color: '#4488ff', letterSpacing: '0.3em', marginBottom: 8 }}>REVENUE COMMAND</div>
@@ -77,9 +78,9 @@ export default function RevenuePage() {
             const cmp = data.comparison[store];
             const pct = isOnline ? null : cmp?.pct ?? null;
             return (
-              <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${missing ? '#ff224444' : 'rgba(255,255,255,0.07)'}`, borderLeft: `3px solid ${STORE_COLORS[store]}`, borderRadius: 10, padding: '20px 24px', position: 'relative' }}>
+              <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${missing ? '#ff224444' : 'rgba(255,255,255,0.07)'}`, borderLeft: `3px solid ${COLORS[store]}`, borderRadius: 10, padding: '20px 24px', position: 'relative' }}>
                 {missing && <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, color: '#ff2244', background: 'rgba(255,34,68,0.1)', border: '1px solid rgba(255,34,68,0.3)', borderRadius: 3, padding: '2px 8px', fontWeight: 700 }}>⚠ 未上傳</div>}
-                <div style={{ fontSize: 10, color: STORE_COLORS[store], letterSpacing: '0.2em', marginBottom: 10, fontWeight: 700 }}>{store}門市</div>
+                <div style={{ fontSize: 10, color: COLORS[store], letterSpacing: '0.2em', marginBottom: 10, fontWeight: 700 }}>{store}門市</div>
                 <div style={{ fontSize: 28, fontWeight: 900, color: missing ? '#444' : '#fff' }}>{missing ? '—' : fmt(todayAmt)}</div>
                 {pct !== null && <div style={{ marginTop: 8, fontSize: 11, color: pctColor(pct) }}>{pct > 0 ? '▲' : pct < 0 ? '▼' : '—'} {Math.abs(pct)}% vs 昨日<span style={{ color: '#555', marginLeft: 8 }}>昨 {fmt(cmp.yesterday)}</span></div>}
               </div>
@@ -97,7 +98,7 @@ export default function RevenuePage() {
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: 16 }}>
             {['新豐', '竹北', '官網'].map(s => (
               <div key={s} style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, color: STORE_COLORS[s], marginBottom: 6 }}>{s} 月目標</div>
+                <div style={{ fontSize: 9, color: COLORS[s], marginBottom: 6 }}>{s} 月目標</div>
                 <input value={goalInput[s]} onChange={e => setGoalInput({ ...goalInput, [s]: e.target.value })} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '6px 10px', color: '#fff', fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
               </div>
             ))}
@@ -109,7 +110,7 @@ export default function RevenuePage() {
             const actual = store === '官網' ? onlineTotal : (data.monthTotal[store] || 0);
             const goal = goals[store] || 1;
             const pct = Math.min(100, Math.round((actual / goal) * 100));
-            const color = STORE_COLORS[store];
+            const color = COLORS[store];
             return (
               <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -134,15 +135,15 @@ export default function RevenuePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {Object.entries(data.monthPayment as Record<string, number>).map(([method, amount]) => {
                 const pct = Math.round(((amount as number) / payTotal) * 100);
-                const colors: Record<string, string> = { 現金: '#00ff88', 刷卡: '#4488ff', LINEPAY: '#00ccff', 匯款: '#ffaa00' };
+                const mc: Record<string, string> = { 現金: '#00ff88', 刷卡: '#4488ff', LINEPAY: '#00ccff', 匯款: '#ffaa00' };
                 return (
                   <div key={method}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 5 }}>
-                      <span style={{ color: colors[method] }}>{method}</span>
+                      <span style={{ color: mc[method] }}>{method}</span>
                       <span style={{ color: '#888' }}>{fmt(amount as number)} <span style={{ color: '#ccc' }}>{pct}%</span></span>
                     </div>
                     <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: colors[method], borderRadius: 2 }} />
+                      <div style={{ height: '100%', width: `${pct}%`, background: mc[method], borderRadius: 2 }} />
                     </div>
                   </div>
                 );
