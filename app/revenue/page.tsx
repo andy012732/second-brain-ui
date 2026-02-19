@@ -163,32 +163,33 @@ export default function RevenuePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
           {['新豐', '竹北', '官網'].map(store => {
             const isOnline = store === '官網';
+            const revenueDate = getRevenueDate();
             const todayAmt = isOnline
-              ? onlineList.find((r: any) => r.date === data.today)?.amount || 0
+              ? onlineList.find((r: any) => r.date === revenueDate)?.amount || 0
               : data.todayData[store]?.revenue || 0;
-            const missing = !isOnline && !data.todayData[store];
+            const hasData = isOnline ? todayAmt > 0 : !!data.todayData[store];
+            const status = isOnline ? (todayAmt > 0 ? 'ok' : 'waiting') : getStoreStatus(store, hasData);
             const cmp = data.comparison[store];
             const pct = isOnline ? null : cmp?.pct ?? null;
-            const diff = isOnline ? null : cmp?.diff ?? null;
+            const SC: Record<string, {label: string, color: string, bg: string, border: string}> = {
+              yesterday: { label: '📋 昨日業績', color: '#4488ff', bg: 'rgba(68,136,255,0.08)', border: 'rgba(68,136,255,0.2)' },
+              waiting:   { label: '⏳ 等待上傳', color: '#ffaa00', bg: 'rgba(255,170,0,0.08)',   border: 'rgba(255,170,0,0.3)' },
+              missing:   { label: '⚠ 未上傳',   color: '#ff2244', bg: 'rgba(255,34,68,0.08)',   border: 'rgba(255,34,68,0.3)' },
+              ok:        { label: '✓ 已上傳',    color: '#00ff88', bg: 'rgba(0,255,136,0.08)',   border: 'rgba(0,255,136,0.2)' },
+            };
+            const sc = SC[status];
             return (
-              <div key={store} style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: `1px solid ${missing ? '#ff224444' : 'rgba(255,255,255,0.07)'}`,
-                borderLeft: `3px solid ${STORE_COLORS[store]}`,
-                borderRadius: 10, padding: '20px 24px',
-                position: 'relative',
-              }}>
-                {missing && (
-                  <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, color: '#ff2244', background: 'rgba(255,34,68,0.1)', border: '1px solid rgba(255,34,68,0.3)', borderRadius: 3, padding: '2px 8px', fontWeight: 700, letterSpacing: '0.1em' }}>
-                    ⚠ 未上傳
-                  </div>
-                )}
+              <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${sc.border}`, borderLeft: `3px solid ${STORE_COLORS[store]}`, borderRadius: 10, padding: '20px 24px', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 9, color: sc.color, background: sc.bg, border: `1px solid ${sc.border}`, borderRadius: 3, padding: '2px 8px', fontWeight: 700, letterSpacing: '0.1em' }}>{sc.label}</div>
                 <div style={{ fontSize: 10, color: STORE_COLORS[store], letterSpacing: '0.2em', marginBottom: 10, fontWeight: 700 }}>{store}門市</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: missing ? '#444' : '#fff' }}>{missing ? '—' : fmt(todayAmt)}</div>
-                {pct !== null && (
+                <div style={{ fontSize: 28, fontWeight: 900, color: (status === 'missing' || status === 'waiting') ? '#333' : '#fff' }}>
+                  {(status === 'missing' || status === 'waiting') ? '—' : fmt(todayAmt)}
+                </div>
+                {status === 'yesterday' && <div style={{ marginTop: 4, fontSize: 9, color: '#4488ff88' }}>保留至今日 20:00</div>}
+                {pct !== null && status === 'ok' && (
                   <div style={{ marginTop: 8, fontSize: 11, color: pctColor(pct) }}>
-                    {pct > 0 ? '▲' : pct < 0 ? '▼' : '—'} {Math.abs(pct)}% vs 昨日
-                    <span style={{ color: '#555', marginLeft: 8 }}>昨 {fmt(cmp.yesterday)}</span>
+                    {pct > 0 ? '▲' : pct < 0 ? '▼' : '—'} {Math.abs(pct)}% vs 前日
+                    <span style={{ color: '#555', marginLeft: 8 }}>前日 {fmt(cmp.yesterday)}</span>
                   </div>
                 )}
               </div>
