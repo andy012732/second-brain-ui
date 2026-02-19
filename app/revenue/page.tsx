@@ -28,6 +28,23 @@ export default function RevenuePage() {
   const [onlineDate, setOnlineDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
 
+  // 業績日期邏輯：每天21:30上傳，顯示到隔天20:00
+  // 現在時間 < 20:00 → 顯示昨天業績；>= 20:00 → 顯示今天業績
+  const getRevenueDate = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 20) {
+      const yesterday = new Date(now.getTime() - 86400000);
+      return yesterday.toISOString().split('T')[0];
+    }
+    return now.toISOString().split('T')[0];
+  };
+
+  // 輪詢狀態
+  const [isPolling, setIsPolling] = useState(false);
+  const [lastFetch, setLastFetch] = useState<string | null>(null);
+  const [manualLoading, setManualLoading] = useState(false);
+
   const load = async () => {
     const [r, g, o] = await Promise.all([
       fetch('/api/revenue').then(r => r.json()),
@@ -38,9 +55,29 @@ export default function RevenuePage() {
     setGoals(g);
     setGoalInput({ 新豐: String(g.新豐), 竹北: String(g.竹北), 官網: String(g.官網) });
     setOnlineList(o);
+    setLastFetch(new Date().toLocaleTimeString('zh-TW'));
   };
 
   useEffect(() => { load(); }, []);
+
+  // 21:20 ~ 23:00 每10分鐘自動輪詢
+  useEffect(() => {
+    const checkAndPoll = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const min = now.getMinutes();
+      const totalMin = hour * 60 + min;
+      // 21:20 = 1280, 23:00 = 1380
+      if (totalMin >= 1280 && totalMin < 1380) {
+        setIsPolling(true);
+        load();
+      } else {
+        setIsPolling(false);
+      }
+    };
+    const interval = setInterval(checkAndPoll, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const saveGoals = async () => {
     setSaving(true);
@@ -84,18 +121,26 @@ export default function RevenuePage() {
   const payTotal = Object.values(data.monthPayment as Record<string, number>).reduce((a, b) => a + b, 0);
 
   return (
-    <div style={{ background: '#0a0a0e', minHeight: '100vh', padding: '32px 40px', fontFamily: 'JetBrains Mono, monospace', color: '#fff' }}>
+    <div style={{ background: '#0a0a0e', minHeight: '100vh', overflowY: 'auto', padding: '32px 40px', fontFamily: 'JetBrains Mono, monospace', color: '#fff' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
         <div>
           <div style={{ fontSize: 10, color: '#4488ff', letterSpacing: '0.3em', marginBottom: 8 }}>REVENUE COMMAND</div>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>業績指揮部</h1>
-          <div style={{ fontSize: 11, color: '#555', marginTop: 6 }}>本月累積 · {data.today}</div>
+          <div style={{ fontSize: 11, color: '#555', marginTop: 6 }}>
+            業績日期 · {getRevenueDate()}
+            {isPolling && <span style={{ color: '#ffaa00', marginLeft: 8 }}>● 自動輪詢中</span>}
+          </div>
+          {lastFetch && <div style={{ fontSize: 10, color: '#333', marginTop: 4 }}>最後更新 {lastFetch}</div>}
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 10, color: '#555', letterSpacing: '0.2em', marginBottom: 4 }}>本月全門市</div>
           <div style={{ fontSize: 36, fontWeight: 900, color: '#00ff88' }}>{fmt(grandTotal)}</div>
+          <button onClick={async () => { setManualLoading(true); await load(); setManualLoading(false); }}
+            style={{ marginTop: 8, background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, padding: '4px 14px', color: '#888', fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.1em' }}>
+            {manualLoading ? '抓取中...' : '⟳ 手動刷新'}
+          </button>
         </div>
       </div>
 
