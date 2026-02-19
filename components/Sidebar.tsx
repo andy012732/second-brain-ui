@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ChevronRight, ChevronDown, FileText, Folder, Search, Calendar, Book } from 'lucide-react';
-import clsx from 'clsx';
+import { ChevronRight, ChevronDown, FileText, Folder, Search, Calendar, LayoutGrid, Zap } from 'lucide-react';
 import QuickCapture from './QuickCapture';
 
 interface FileNode {
@@ -14,28 +13,64 @@ interface FileNode {
   children?: FileNode[];
 }
 
-const FileTreeItem = ({ node, level = 0, currentPath }: { node: FileNode; level?: number; currentPath: string | null }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const FOLDER_COLORS: Record<string, string> = {
+  '00-inbox':     '#ffaa00',
+  '01-daily':     '#00aaff',
+  '01-projects':  '#00aaff',
+  '02-areas':     '#00ff88',
+  '02-ideas':     '#00ff88',
+  '03-resources': '#cc44ff',
+  '03-sources':   '#cc44ff',
+  '04-archive':   '#555',
+  '04-research':  '#ff6600',
+  '05-logs':      '#4488ff',
+  '05-projects':  '#4488ff',
+  '06-tutorials': '#ff44aa',
+  '99-templates': '#666',
+  'templates':    '#666',
+};
+
+function getFolderColor(name: string) {
+  return FOLDER_COLORS[name.toLowerCase()] ?? '#4488ff';
+}
+
+const FileTreeItem = ({ node, level = 0, currentPath }: {
+  node: FileNode; level?: number; currentPath: string | null;
+}) => {
+  const [isOpen, setIsOpen] = useState(level === 0);
   const isSelected = currentPath === node.path;
+  const folderColor = getFolderColor(node.name);
 
   if (node.type === 'directory') {
     return (
       <div>
         <div
-          className={clsx(
-            "flex items-center gap-1 py-1 px-2 cursor-pointer hover:bg-gray-800 text-gray-400 select-none",
-            "transition-colors duration-200"
-          )}
-          style={{ paddingLeft: `${level * 12 + 8}px` }}
           onClick={() => setIsOpen(!isOpen)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: `5px 8px 5px ${level * 12 + 8}px`,
+            cursor: 'pointer',
+            color: isOpen ? folderColor : '#555',
+            fontSize: 11, fontWeight: 700,
+            letterSpacing: '0.05em',
+            fontFamily: '"JetBrains Mono", monospace',
+            transition: 'color 0.15s',
+            userSelect: 'none',
+            borderLeft: isOpen ? `2px solid ${folderColor}44` : '2px solid transparent',
+            marginLeft: level > 0 ? 8 : 0,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = folderColor}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = isOpen ? folderColor : '#555'}
         >
-          {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          <Folder size={16} className="text-blue-400" />
-          <span className="text-sm">{node.name}</span>
+          <span style={{ color: folderColor, opacity: 0.8, display: 'flex' }}>
+            {isOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          </span>
+          <Folder size={11} style={{ color: folderColor }} />
+          <span style={{ marginLeft: 2 }}>{node.name}</span>
         </div>
         {isOpen && node.children && (
           <div>
-            {node.children.map((child) => (
+            {node.children.map(child => (
               <FileTreeItem key={child.path} node={child} level={level + 1} currentPath={currentPath} />
             ))}
           </div>
@@ -46,15 +81,37 @@ const FileTreeItem = ({ node, level = 0, currentPath }: { node: FileNode; level?
 
   return (
     <Link
-      href={`/?file=${encodeURIComponent(node.path)}`}
-      className={clsx(
-        "flex items-center gap-2 py-1 px-2 hover:bg-gray-800 cursor-pointer block text-sm",
-        isSelected ? "bg-gray-800 text-white" : "text-gray-400"
-      )}
-      style={{ paddingLeft: `${level * 12 + 24}px` }}
+      href={`/second-brain?file=${encodeURIComponent(node.path)}`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: `4px 8px 4px ${level * 12 + 20}px`,
+        fontSize: 11,
+        fontFamily: '"JetBrains Mono", monospace',
+        color: isSelected ? '#fff' : '#556',
+        background: isSelected ? 'rgba(0,170,255,0.1)' : 'transparent',
+        borderLeft: isSelected ? '2px solid #00aaff' : '2px solid transparent',
+        marginLeft: level > 0 ? 8 : 0,
+        transition: 'all 0.12s',
+        textDecoration: 'none',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}
+      onMouseEnter={e => {
+        if (!isSelected) {
+          (e.currentTarget as HTMLElement).style.color = '#aac';
+          (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+        }
+      }}
+      onMouseLeave={e => {
+        if (!isSelected) {
+          (e.currentTarget as HTMLElement).style.color = '#556';
+          (e.currentTarget as HTMLElement).style.background = 'transparent';
+        }
+      }}
     >
-      <FileText size={14} />
-      <span>{node.name.replace('.md', '')}</span>
+      <FileText size={10} style={{ flexShrink: 0, opacity: 0.5 }} />
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {node.name.replace('.md', '')}
+      </span>
     </Link>
   );
 };
@@ -69,119 +126,183 @@ export default function Sidebar() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/tree')
-      .then((res) => res.json())
-      .then((data) => setTree(data));
+    fetch('/api/tree').then(r => r.json()).then(setTree);
   }, []);
 
   const handleDailyReview = async () => {
-      try {
-          const res = await fetch('/api/review');
-          if (res.ok) {
-              const file = await res.json();
-              router.push(`/?file=${encodeURIComponent(file.path)}`);
-          }
-      } catch (e) {
-          alert('Failed to load review');
+    try {
+      const res = await fetch('/api/review');
+      if (res.ok) {
+        const file = await res.json();
+        router.push(`/second-brain?file=${encodeURIComponent(file.path)}`);
       }
+    } catch { alert('Failed to load review'); }
   };
 
-  // 搜尋處理
   useEffect(() => {
-      if (!searchQuery.trim()) {
-          setSearchResults([]);
-          setIsSearching(false);
-          return;
-      }
-
-      setIsSearching(true);
-      const timer = setTimeout(() => {
-          fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
-              .then(res => res.json())
-              .then(data => {
-                  setSearchResults(data);
-                  setIsSearching(false);
-              });
-      }, 300); // Debounce
-
-      return () => clearTimeout(timer);
+    if (!searchQuery.trim()) { setSearchResults([]); setIsSearching(false); return; }
+    setIsSearching(true);
+    const t = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+        .then(r => r.json())
+        .then(d => { setSearchResults(d); setIsSearching(false); });
+    }, 300);
+    return () => clearTimeout(t);
   }, [searchQuery]);
 
   return (
-    <div className="w-64 h-full bg-gray-900 border-r border-gray-800 flex flex-col">
-      <div className="p-4 border-b border-gray-800">
-        <h1 className="font-bold text-lg text-gray-200">Second Brain</h1>
+    <div style={{
+      width: 220, height: '100%', flexShrink: 0,
+      background: 'rgba(8,8,12,0.98)',
+      borderRight: '1px solid rgba(255,255,255,0.06)',
+      display: 'flex', flexDirection: 'column',
+      fontFamily: '"JetBrains Mono", monospace',
+    }}>
+      {/* 標題 */}
+      <div style={{
+        padding: '14px 14px 10px',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: '#00ff88',
+            boxShadow: '0 0 6px #00ff88, 0 0 12px #00ff88',
+          }} />
+          <span style={{
+            fontSize: 10, fontWeight: 900, letterSpacing: '0.25em',
+            color: '#00ff88',
+            textShadow: '0 0 10px #00ff8866',
+          }}>
+            SECOND BRAIN
+          </span>
+        </div>
       </div>
-      
+
       {/* 搜尋框 */}
-      <div className="px-4 pt-4 pb-2">
-          <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-gray-500" size={14} />
-              <input 
-                  type="text"
-                  placeholder="搜尋筆記..."
-                  className="w-full bg-gray-800 text-gray-200 text-sm rounded-md py-2 pl-9 pr-3 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-              />
-          </div>
+      <div style={{ padding: '10px 10px 6px' }}>
+        <div style={{ position: 'relative' }}>
+          <Search size={11} style={{
+            position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)',
+            color: '#444',
+          }} />
+          <input
+            type="text"
+            placeholder="搜尋筆記..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 4,
+              padding: '6px 8px 6px 26px',
+              fontSize: 11, color: '#aaa',
+              outline: 'none',
+              fontFamily: 'inherit',
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={e => (e.target as HTMLInputElement).style.borderColor = '#00aaff66'}
+            onBlur={e => (e.target as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.08)'}
+          />
+        </div>
       </div>
 
-      <QuickCapture />
-      
-      {/* Daily Review Button */}
-      <div className="flex gap-2 mx-4 mt-2">
-        <button 
-            onClick={handleDailyReview}
-            className="flex-1 flex items-center justify-center gap-2 py-2 bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 rounded transition-colors"
-            title="隨機回顧"
+      {/* Quick Capture */}
+      <div style={{ padding: '0 10px 6px' }}>
+        <QuickCapture />
+      </div>
+
+      {/* 操作按鈕列 */}
+      <div style={{ display: 'flex', gap: 6, padding: '0 10px 10px' }}>
+        <button
+          onClick={handleDailyReview}
+          style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            padding: '6px 0',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 4, cursor: 'pointer',
+            fontSize: 10, fontWeight: 700, color: '#888',
+            fontFamily: 'inherit', letterSpacing: '0.1em',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.color = '#ffaa00';
+            (e.currentTarget as HTMLElement).style.borderColor = '#ffaa0044';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.color = '#888';
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
+          }}
         >
-            <Calendar size={14} />
-            <span>Daily Review</span>
+          <Calendar size={11} /> REVIEW
         </button>
+
         <Link
-            href="/?file=__MANUAL__"
-            className="flex items-center justify-center p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
-            title="使用手冊"
+          href="/kanban"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '6px 10px',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 4,
+            color: '#888', textDecoration: 'none',
+            transition: 'all 0.15s',
+            fontSize: 10,
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.color = '#00aaff';
+            (e.currentTarget as HTMLElement).style.borderColor = '#00aaff44';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.color = '#888';
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
+          }}
         >
-            <Book size={14} />
-        </Link>
-        <Link
-            href="/kanban"
-            className="flex items-center justify-center p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
-            title="Kanban Dashboard"
-        >
-            <Book size={14} />
+          <LayoutGrid size={11} />
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-2">
-        {/* 搜尋結果模式 */}
+      {/* 分隔線 */}
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '0 10px 8px' }} />
+
+      {/* 檔案樹 / 搜尋結果 */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 4px 12px' }}>
         {searchQuery ? (
-            <div className="px-2">
-                <div className="text-xs font-semibold text-gray-500 px-2 mb-2 uppercase">Search Results</div>
-                {searchResults.length === 0 && !isSearching && (
-                    <div className="text-sm text-gray-500 px-2">No results found</div>
-                )}
-                {searchResults.map((result) => (
-                    <Link
-                        key={result.path}
-                        href={`/?file=${encodeURIComponent(result.path)}`}
-                        className="flex items-center gap-2 py-1 px-2 hover:bg-gray-800 cursor-pointer block text-sm text-gray-300"
-                    >
-                        <FileText size={14} />
-                        <span className="truncate">{result.name.replace('.md', '')}</span>
-                    </Link>
-                ))}
+          <div>
+            <div style={{ fontSize: 9, color: '#444', letterSpacing: '0.2em', padding: '4px 12px 6px', fontWeight: 900 }}>
+              RESULTS
             </div>
+            {searchResults.length === 0 && !isSearching && (
+              <div style={{ fontSize: 11, color: '#444', padding: '4px 12px' }}>無結果</div>
+            )}
+            {searchResults.map(r => (
+              <Link
+                key={r.path}
+                href={`/second-brain?file=${encodeURIComponent(r.path)}`}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '5px 12px', fontSize: 11,
+                  color: '#778', textDecoration: 'none',
+                  transition: 'color 0.12s',
+                }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#aac'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#778'}
+              >
+                <Zap size={10} style={{ color: '#00aaff', flexShrink: 0 }} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.name.replace('.md', '')}
+                </span>
+              </Link>
+            ))}
+          </div>
         ) : (
-            /* 正常檔案樹模式 */
-            tree.map((node) => (
-                <FileTreeItem key={node.path} node={node} currentPath={currentPath} />
-            ))
+          tree.map(node => (
+            <FileTreeItem key={node.path} node={node} currentPath={currentPath} />
+          ))
         )}
       </div>
     </div>
   );
 }
-// Force rebuild
