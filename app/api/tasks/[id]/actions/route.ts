@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTasks, saveTasks } from '@/lib/kanban';
+import { getTaskById, updateTask, addComment, type Comment } from '@/lib/kanban';
 import { v4 as uuidv4 } from 'uuid';
 
 function corsHeaders() {
@@ -11,29 +11,33 @@ function corsHeaders() {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const { action, ...data } = await req.json();
-  const tasks = await getTasks();
-  const index = tasks.findIndex(t => t.id === id);
-  
-  if (index === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  try {
+    const { id } = await params;
+    const { action, ...data } = await req.json();
 
-  if (action === 'move') {
-    tasks[index].status = data.status;
-  } else if (action === 'comment') {
-    tasks[index].comments.push({
-      id: uuidv4(),
-      taskId: id,
-      content: data.content,
-      parentId: data.parentId || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
+    if (action === 'move') {
+      const updated = await updateTask(id, { status: data.status });
+      return NextResponse.json(updated, { headers: corsHeaders() });
+    }
+
+    if (action === 'comment') {
+      const comment: Comment = {
+        id: uuidv4(),
+        taskId: id,
+        content: data.content,
+        parentId: data.parentId || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const updated = await addComment(id, comment);
+      return NextResponse.json(updated, { headers: corsHeaders() });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
-
-  tasks[index].updatedAt = new Date().toISOString();
-  await saveTasks(tasks);
-  return NextResponse.json(tasks[index], { headers: corsHeaders() });
 }
 
 export async function OPTIONS() {

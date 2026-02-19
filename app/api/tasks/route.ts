@@ -1,25 +1,21 @@
 import { NextResponse } from 'next/server';
-import { getTasks, saveTasks, type Task } from '@/lib/kanban';
+import { getTasks, createTask, type Task } from '@/lib/kanban';
 import { v4 as uuidv4 } from 'uuid';
 
 export const dynamic = 'force-dynamic';
 
-// 🚀 強制開啟 CORS 通行證
 function getCorsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   };
 }
 
 export async function GET() {
   const tasks = await getTasks();
-  return new NextResponse(JSON.stringify(tasks), {
-    status: 200,
-    headers: getCorsHeaders()
-  });
+  return new NextResponse(JSON.stringify(tasks), { status: 200, headers: getCorsHeaders() });
 }
 
 export async function POST(req: Request) {
@@ -41,23 +37,14 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    tasks.push(newTask);
-    await saveTasks(tasks);
-    return new NextResponse(JSON.stringify(newTask), {
-      status: 201,
-      headers: getCorsHeaders()
-    });
+    await createTask(newTask);
+    return new NextResponse(JSON.stringify(newTask), { status: 201, headers: getCorsHeaders() });
   } catch (e) {
-    return new NextResponse(JSON.stringify({ error: 'Failed' }), {
-      status: 500,
-      headers: getCorsHeaders()
-    });
+    console.error(e);
+    return new NextResponse(JSON.stringify({ error: 'Failed' }), { status: 500, headers: getCorsHeaders() });
   }
 }
 
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: getCorsHeaders()
-  });
+  return new NextResponse(null, { status: 204, headers: getCorsHeaders() });
 }

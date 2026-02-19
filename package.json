@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",
+    "@supabase/supabase-js": "^2.97.0",
     "@types/uuid": "^10.0.0",
     "axios": "^1.13.5",
     "better-sqlite3": "^12.6.2",
