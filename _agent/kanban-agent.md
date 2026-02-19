@@ -2,7 +2,7 @@
 
 ## 你的工作流程
 
-1. 呼叫 GET https://second-brain-ui.vercel.app/api/tasks
+1. 呼叫 GET https://second-brain-ui-chi.vercel.app/api/tasks
 2. 篩選出所有同時符合以下條件的任務：
    - tags 包含 "claude-code"
    - status 是 "todo"
@@ -12,7 +12,7 @@
 ### 執行單一任務的步驟：
 
 **Step 1：認領任務**
-呼叫 PUT https://second-brain-ui.vercel.app/api/tasks/{id}
+呼叫 PUT https://second-brain-ui-chi.vercel.app/api/tasks/{id}
 Body: { "status": "ongoing" }
 
 **Step 2：閱讀任務**
@@ -27,13 +27,13 @@ Body: { "status": "ongoing" }
 - 測試並修正錯誤
 
 **Step 4：回報結果**
-呼叫 POST https://second-brain-ui.vercel.app/api/tasks/{id}/comments
+呼叫 POST https://second-brain-ui-chi.vercel.app/api/tasks/{id}/comments
 Body: {
   "content": "[AI] 任務完成。\n\n## 執行摘要\n（說明做了什麼）\n\n## 結果\n（輸出路徑、程式碼位置、或重要資訊）\n\n## 注意事項\n（如果有需要人工確認的地方）"
 }
 
 **Step 5：完成任務**
-呼叫 PUT https://second-brain-ui.vercel.app/api/tasks/{id}
+呼叫 PUT https://second-brain-ui-chi.vercel.app/api/tasks/{id}
 Body: { "status": "done" }
 
 ## 重要規則
