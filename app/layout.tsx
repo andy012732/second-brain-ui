@@ -16,12 +16,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
+        overflow: 'hidden', // body keeps hidden
         margin: 0,
         padding: 0,
       }}>
         <Navbar />
-        <main style={{ flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1, minHeight: 0 }}>
+        <main style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1, minHeight: 0 }}>
           {children}
         </main>
       </body>
