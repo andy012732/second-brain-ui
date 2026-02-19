@@ -28,16 +28,29 @@ export default function RevenuePage() {
   const [onlineDate, setOnlineDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
 
-  // 業績日期邏輯：每天21:30上傳，顯示到隔天20:00
-  // 現在時間 < 20:00 → 顯示昨天業績；>= 20:00 → 顯示今天業績
+  // 業績日期邏輯（台灣時間 UTC+8）
+  // < 20:00 → 顯示昨天（昨日業績保留期）
+  // >= 20:00 → 顯示今天
+  const getTWDate = (offsetDays = 0) => {
+    const now = new Date();
+    const tw = new Date(now.getTime() + 8 * 60 * 60 * 1000 + offsetDays * 86400000);
+    return tw.toISOString().split('T')[0];
+  };
   const getRevenueDate = () => {
     const now = new Date();
-    const hour = now.getHours();
-    if (hour < 20) {
-      const yesterday = new Date(now.getTime() - 86400000);
-      return yesterday.toISOString().split('T')[0];
-    }
-    return now.toISOString().split('T')[0];
+    const twHour = (now.getUTCHours() + 8) % 24;
+    return twHour < 20 ? getTWDate(-1) : getTWDate(0);
+  };
+  // 今日快照的狀態判斷
+  const getStoreStatus = (store: string, hasData: boolean) => {
+    const now = new Date();
+    const twHour = (now.getUTCHours() + 8) % 24;
+    const twMin = now.getUTCMinutes();
+    const totalMin = twHour * 60 + twMin;
+    if (twHour < 20) return 'yesterday'; // 保留昨日
+    if (!hasData && totalMin < 23 * 60) return 'waiting'; // 等待上傳
+    if (!hasData) return 'missing'; // 超過23:00未上傳
+    return 'ok';
   };
 
   // 輪詢狀態
