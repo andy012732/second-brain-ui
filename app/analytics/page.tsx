@@ -1,157 +1,105 @@
 'use client';
+import React from 'react';
 
-import React, { useState } from 'react';
-import { Youtube, TrendingUp, ArrowUpRight, ArrowDownRight, Zap, Target, MessageSquare, ThumbsUp, Users, MousePointer2 } from 'lucide-react';
+const S = {
+  page: { height: '100%', overflowY: 'auto' as const, padding: '20px 24px', background: '#010208', display: 'flex', flexDirection: 'column' as const, gap: 16 } as React.CSSProperties,
+  panel: { background: '#0d1c30', border: '1px solid rgba(0,245,255,0.13)', padding: '18px 20px', position: 'relative' as const } as React.CSSProperties,
+  label: { fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase' as const, color: '#1a3045', marginBottom: 10, display: 'block' } as React.CSSProperties,
+};
 
-const mono = { fontFamily: "'Share Tech Mono', monospace" } as const;
-const orb  = { fontFamily: "'Orbitron', monospace" }        as const;
+const KPI = [
+  { label: 'YOUTUBE 訂閱', val: '12,400', delta: '+12%', color: '#ff006e', up: true },
+  { label: 'GA4 使用者',   val: '45,230', delta: '+8.5%', color: '#00f5ff', up: true },
+  { label: 'GSC 點擊量',   val: '8,120',  delta: '-2.1%', color: '#ff6b00', up: false },
+  { label: '內容健康度',   val: '92/100', delta: 'STABLE', color: '#00ff88', up: true },
+];
 
-export default function ContentAnalytics() {
-  const [titleInput, setTitleInput] = useState('');
+const VIDEOS = [
+  { title: 'GiberPass 十大必用功能完整導覽', views: '2.4萬', rate: '98%', badge: 'TRENDING' },
+  { title: '飆鋒衣開箱 — 騎士必備評測 2026', views: '1.8萬', rate: '94%', badge: 'HOT' },
+  { title: '德谷拉安全帽性能大比拼', views: '1.2萬', rate: '91%', badge: null },
+];
 
-  const kpis = [
-    { label:'YouTube 訂閱', value:'12,400', grow:'+12%', up:true,  color:'#ff006e', icon:<Youtube size={16}/> },
-    { label:'GA4 使用者',   value:'45,230', grow:'+8.5%',up:true,  color:'#00f5ff', icon:<Users size={16}/> },
-    { label:'GSC 總點擊',   value:'8,120',  grow:'-2.1%',up:false, color:'#ff6b00', icon:<MousePointer2 size={16}/> },
-    { label:'內容健康度',   value:'92/100', grow:'STABLE',up:true, color:'#00ff88', icon:<Zap size={16}/> },
-  ];
+const PLATFORMS = [
+  { name: 'YouTube',   pct: 52, color: '#ff006e' },
+  { name: 'Instagram', pct: 28, color: '#00f5ff' },
+  { name: 'Threads',   pct: 20, color: '#00ff88' },
+];
 
-  const videos = [
-    { title:'GyberPass 十大必用功能完整導覽', views:'2.4萬', engagement:'98%', date:'2天前' },
-    { title:'為什麼騎士都需要一件好的飆鋒衣？', views:'1.8萬', engagement:'92%', date:'5天前' },
-  ];
-
-  const platforms = [
-    { name:'INSTAGRAM', pct:62, color:'#00f5ff' },
-    { name:'YOUTUBE',   pct:24, color:'#ff006e' },
-    { name:'THREADS',   pct:14, color:'#00ff88' },
-  ];
-
+export default function AnalyticsPage() {
   return (
-    <div className="h-full w-full overflow-y-auto p-4 md:p-8 flex flex-col gap-6"
-      style={{ background:'#020409', color:'#c8e6f5', position:'relative', zIndex:1 }}>
+    <div style={S.page}>
+
+      {/* Header */}
+      <div className="fiu" style={{ flexShrink: 0 }}>
+        <div style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: 20, letterSpacing: 4, textTransform: 'uppercase', color: '#e4f4ff' }}>內容分析</div>
+        <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 2, color: '#1a3045', marginTop: 4 }}>CONTENT INTELLIGENCE // REAL-TIME</div>
+      </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {kpis.map(k => (
-          <div key={k.label} style={{
-            background:'#0d1f3c', border:'1px solid rgba(0,245,255,0.1)',
-            borderLeft:`3px solid ${k.color}`, padding:'16px 20px',
-          }}>
-            <div className="flex justify-between items-start mb-3">
-              <div style={{ color:k.color }}>{k.icon}</div>
-              <div className="flex items-center gap-1"
-                style={{ ...mono, fontSize:9, color: k.up ? '#00ff88':'#ff006e' }}>
-                {k.grow} {k.up ? <ArrowUpRight size={10}/> : <ArrowDownRight size={10}/>}
-              </div>
+      <div className="fiu1" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, flexShrink: 0 }}>
+        {KPI.map(k => (
+          <div key={k.label} style={{ ...S.panel, borderLeft: `2px solid ${k.color}` }}>
+            <span style={{ ...S.label, marginBottom: 6 }}>{k.label}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: 22, color: k.color, textShadow: `0 0 14px ${k.color}55` }}>{k.val}</div>
+              <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, color: k.up ? '#00ff88' : '#ff6b00' }}>{k.delta}</div>
             </div>
-            <div style={{ ...mono, fontSize:8, color:'#2a6080', letterSpacing:2,
-              textTransform:'uppercase', marginBottom:4 }}>{k.label}</div>
-            <div style={{ ...orb, fontSize:22, fontWeight:700, color:k.color,
-              textShadow:`0 0 14px ${k.color}60` }}>{k.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1">
+      {/* Bottom */}
+      <div className="fiu2" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, flex: 1, minHeight: 0 }}>
 
-        {/* Left: Videos */}
-        <section className="md:col-span-8 flex flex-col gap-4">
-          <div style={{ ...mono, fontSize:9, color:'#2a6080', letterSpacing:3,
-            display:'flex', alignItems:'center', gap:6 }}>
-            <TrendingUp size={11} style={{ color:'#ff006e' }}/> 爆款影片分析
+        {/* Video list */}
+        <div style={{ ...S.panel, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <span style={S.label}>▶ 優秀影片分析</span>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+            {VIDEOS.map(v => (
+              <div key={v.title} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 12px', background: 'rgba(9,20,34,0.7)', border: '1px solid rgba(0,245,255,0.06)' }}>
+                <div style={{ width: 40, height: 30, background: '#091422', border: '1px solid rgba(0,245,255,0.1)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="#ff006e" strokeWidth={2}><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 600, fontSize: 13, color: '#e4f4ff', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</div>
+                  <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, color: '#2a4a5a' }}>{v.views} 觀看 · {v.rate} 互動</div>
+                </div>
+                {v.badge && (
+                  <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, padding: '2px 6px', background: 'rgba(255,0,110,0.08)', color: '#ff006e', border: '1px solid rgba(255,0,110,0.25)', flexShrink: 0 }}>{v.badge}</span>
+                )}
+              </div>
+            ))}
           </div>
-          {videos.map((v,i) => (
-            <div key={i} style={{
-              background:'#0a1628', border:'1px solid rgba(0,245,255,0.1)',
-              padding:'16px 20px', display:'flex', alignItems:'center', gap:16,
-            }}>
-              <div style={{
-                width:100, height:60, background:'#060d1a', flexShrink:0,
-                border:'1px solid rgba(0,245,255,0.1)', display:'flex',
-                alignItems:'center', justifyContent:'center',
-                color:'rgba(0,245,255,0.15)',
-              }}>
-                <Youtube size={24}/>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-sm mb-2" style={{ color:'#e0f4ff' }}>{v.title}</h3>
-                <div className="flex gap-6">
-                  <span style={{ ...mono, fontSize:9, color:'#2a6080', display:'flex', alignItems:'center', gap:4 }}>
-                    <ThumbsUp size={10}/> {v.views}
-                  </span>
-                  <span style={{ ...mono, fontSize:9, color:'#2a6080', display:'flex', alignItems:'center', gap:4 }}>
-                    <MessageSquare size={10}/> {v.engagement} 互動
-                  </span>
-                </div>
-              </div>
-              <div style={{ textAlign:'right' }}>
-                <div style={{ ...mono, fontSize:9, color:'#1a3a50', marginBottom:4 }}>{v.date}</div>
-                <span style={{ ...mono, fontSize:8, padding:'2px 8px',
-                  background:'rgba(255,0,110,0.08)', color:'#ff006e',
-                  border:'1px solid rgba(255,0,110,0.25)' }}>TRENDING</span>
-              </div>
-            </div>
-          ))}
-        </section>
+        </div>
 
-        {/* Right: Title Optimizer + Platform */}
-        <section className="md:col-span-4 flex flex-col gap-4">
-
-          {/* Platform distribution */}
-          <div style={{ background:'#0a1628', border:'1px solid rgba(0,245,255,0.1)', padding:'20px' }}>
-            <div style={{ ...mono, fontSize:9, color:'#2a6080', letterSpacing:3, marginBottom:16 }}>
-              平台分布
-            </div>
-            {platforms.map(p => (
-              <div key={p.name} className="mb-4">
-                <div className="flex justify-between mb-1">
-                  <span style={{ ...mono, fontSize:9, color:'#3a6a8a' }}>{p.name}</span>
-                  <span style={{ ...orb, fontSize:10, color:p.color }}>{p.pct}%</span>
+        {/* Platform + optimizer */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+          <div style={S.panel}>
+            <span style={S.label}>◈ 平台流量分佈</span>
+            {PLATFORMS.map(p => (
+              <div key={p.name} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, color: '#3a6070' }}>{p.name}</span>
+                  <span style={{ fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700, color: p.color }}>{p.pct}%</span>
                 </div>
-                <div style={{ height:3, background:'rgba(255,255,255,0.04)' }}>
-                  <div style={{ width:`${p.pct}%`, height:'100%', background:p.color,
-                    boxShadow:`0 0 6px ${p.color}`, transition:'width 1s ease' }}/>
+                <div style={{ height: 3, background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                  <div className="prog-fill" style={{ width: `${p.pct}%`, height: '100%', background: p.color, boxShadow: `0 0 5px ${p.color}` }}/>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Title optimizer */}
-          <div style={{
-            background:'#0a1628', border:'1px solid rgba(255,0,110,0.2)',
-            padding:'20px', flex:1,
-          }}>
-            <div style={{ ...mono, fontSize:9, color:'#ff006e', letterSpacing:3, marginBottom:16,
-              display:'flex', alignItems:'center', gap:6 }}>
-              <Target size={11}/> 標題優化大腦
-            </div>
-            <textarea
-              value={titleInput}
-              onChange={e => setTitleInput(e.target.value)}
-              placeholder="// 輸入預想標題..."
-              style={{
-                width:'100%', background:'rgba(255,255,255,0.03)',
-                border:'1px solid rgba(0,245,255,0.1)', color:'#c8e6f5',
-                padding:'12px', resize:'none', minHeight:80, outline:'none',
-                ...mono, fontSize:11,
-              }}
-            />
-            <button style={{
-              width:'100%', marginTop:12, padding:'10px',
-              background:'rgba(255,0,110,0.12)', border:'1px solid rgba(255,0,110,0.3)',
-              color:'#ff006e', cursor:'pointer', ...mono, fontSize:9, letterSpacing:3,
-              textTransform:'uppercase',
-            }}>
-              ▶ AI 評分與建議
+          <div style={{ ...S.panel, flex: 1 }}>
+            <span style={S.label}>⚡ 標題優化器</span>
+            <input type="text" placeholder="輸入影片標題..."
+              style={{ width: '100%', background: '#050e1a', border: '1px solid rgba(0,245,255,0.1)', padding: '8px 10px', fontFamily: 'Share Tech Mono, monospace', fontSize: 10, color: '#e4f4ff', caretColor: '#00f5ff', outline: 'none', marginBottom: 8 }}/>
+            <button style={{ width: '100%', background: 'rgba(0,245,255,0.07)', border: '1px solid rgba(0,245,255,0.25)', color: '#00f5ff', fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 2, padding: '8px', cursor: 'pointer', textTransform: 'uppercase' }}>
+              ▶ AI 評分
             </button>
-            <div style={{ marginTop:16, padding:12,
-              border:'1px dashed rgba(0,245,255,0.1)',
-              ...mono, fontSize:9, color:'#1a3a50', textAlign:'center' }}>
-              // 尚無優化紀錄
-            </div>
           </div>
-        </section>
+        </div>
+
       </div>
     </div>
   );
