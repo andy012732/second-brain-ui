@@ -1,137 +1,180 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  Wallet, Store, Edit3, PieChart, 
-  RefreshCcw, Globe, Zap, BarChart3, Loader2
-} from 'lucide-react';
+import React from 'react';
+import { Store, Globe, RefreshCcw, BarChart3, Loader2, PieChart } from 'lucide-react';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
+const mono = { fontFamily: "'Share Tech Mono', monospace" } as const;
+const orb  = { fontFamily: "'Orbitron', monospace" }        as const;
 
 export default function RevenueManager() {
-  // 🚀 從 Notion API 抓取真實數據
-  const { data: revenue = [], isLoading, mutate } = useSWR('/api/notion/revenue', fetcher, {
-    refreshInterval: 60000 // 每分鐘自動刷新
-  });
+  const { data: revenue = [], isLoading, mutate } =
+    useSWR('/api/notion/revenue', fetcher, { refreshInterval: 60000 });
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const revToday = Array.isArray(revenue) ? revenue.filter((r: any) => r.date === todayStr) : [];
-
-  // 門市業績即時計算
-  const hsinfengTotal = revToday.filter((r: any) => r.store === '新豐').reduce((s, r) => s + r.total, 0);
-  const zhubeiTotal = revToday.filter((r: any) => r.store === '竹北').reduce((s, r) => s + r.total, 0);
-  const websiteTotal = revToday.filter((r: any) => r.store === '官網').reduce((s, r) => s + r.total, 0);
-  const grandTotal = hsinfengTotal + zhubeiTotal + websiteTotal;
+  const todayStr     = new Date().toISOString().split('T')[0];
+  const revToday     = Array.isArray(revenue) ? revenue.filter((r: any) => r.date === todayStr) : [];
+  const hsinfengTotal = revToday.filter((r:any)=>r.store==='新豐').reduce((s:number,r:any)=>s+r.total,0);
+  const zhubeiTotal   = revToday.filter((r:any)=>r.store==='竹北').reduce((s:number,r:any)=>s+r.total,0);
+  const websiteTotal  = revToday.filter((r:any)=>r.store==='官網').reduce((s:number,r:any)=>s+r.total,0);
+  const grandTotal    = hsinfengTotal + zhubeiTotal + websiteTotal;
 
   const sectors = [
-    { name: '新豐門市', id: 'hf', total: hsinfengTotal, color: 'text-blue-500', bg: 'bg-blue-500/10', icon: <Store /> },
-    { name: '竹北門市', id: 'zb', total: zhubeiTotal, color: 'text-cyan-400', bg: 'bg-cyan-400/10', icon: <Store /> },
-    { name: '網站業績', id: 'web', total: websiteTotal, color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: <Globe /> }
+    { name:'新豐門市', id:'hf',  total:hsinfengTotal, color:'#00f5ff', icon:<Store size={18}/> },
+    { name:'竹北門市', id:'zb',  total:zhubeiTotal,   color:'#ff006e', icon:<Store size={18}/> },
+    { name:'官網業績', id:'web', total:websiteTotal,  color:'#00ff88', icon:<Globe size={18}/> },
   ];
 
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ ...mono, fontSize:9, letterSpacing:3, color:'#2a6080',
+      textTransform:'uppercase', marginBottom:12, display:'flex', alignItems:'center', gap:6 }}>
+      {children}
+    </div>
+  );
+
   return (
-    <div className="h-full w-full bg-[#030303] text-gray-400 font-sans p-8 flex flex-col overflow-y-auto">
-      
-      <div className="flex justify-between items-end mb-12 shrink-0">
+    <div className="h-full w-full overflow-y-auto p-4 md:p-8 flex flex-col gap-6"
+      style={{ background:'#020409', color:'#c8e6f5', position:'relative', zIndex:1 }}>
+
+      {/* ── HEADER ───────────────────────────────────────────────────────── */}
+      <div className="flex justify-between items-end">
         <div>
-            <h2 className="text-2xl font-black text-white tracking-widest uppercase">業績指揮部 (Real-time Live)</h2>
-            <div className="flex items-center gap-2 mt-2">
-                {isLoading ? (
-                    <Loader2 size={10} className="animate-spin text-blue-500" />
-                ) : (
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                )}
-                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-[0.3em]">Notion 資料流穩定連接中</p>
-            </div>
+          <div style={{ ...orb, fontSize:20, fontWeight:900, color:'#e0f4ff', letterSpacing:2 }}>
+            業績指揮部
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            {isLoading
+              ? <Loader2 size={9} className="animate-spin" style={{ color:'#00f5ff' }}/>
+              : <span className="pulse-dot"/>}
+            <span style={{ ...mono, fontSize:9, color:'#2a6080', letterSpacing:2 }}>
+              NOTION 資料流連接中
+            </span>
+          </div>
         </div>
-        <div className="text-right">
-            <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-1">今日全軍營收總合</span>
-            <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
-                ${grandTotal.toLocaleString()}
-            </div>
+        <div style={{ textAlign:'right' }}>
+          <div style={{ ...mono, fontSize:9, color:'rgba(0,245,255,0.5)', letterSpacing:3, marginBottom:4 }}>
+            今日全軍營收
+          </div>
+          <div style={{ ...orb, fontSize:36, fontWeight:900, color:'#00f5ff',
+            textShadow:'0 0 20px rgba(0,245,255,0.4)', lineHeight:1 }}>
+            ${grandTotal.toLocaleString()}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-8 mb-12 shrink-0">
-        {sectors.map((sector) => (
-          <div key={sector.id} className="bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem] shadow-2xl relative group hover:border-white/10 transition-all overflow-hidden">
-            <div className="relative z-10">
-                <div className="flex justify-between items-start mb-6">
-                    <div className={`p-4 ${sector.bg} ${sector.color} rounded-2xl`}>
-                        {sector.icon}
-                    </div>
-                    {isLoading && <Loader2 size={14} className="animate-spin text-gray-700" />}
-                </div>
-                <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-1">{sector.name}</h3>
-                <div className="text-3xl font-black text-white tabular-nums tracking-tighter mb-6">${sector.total.toLocaleString()}</div>
-                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className={`h-full ${sector.color.replace('text', 'bg')} shadow-[0_0_10px_currentColor] transition-all duration-1000`} style={{ width: `${Math.min((sector.total / 30000) * 100, 100)}%` }} />
-                </div>
+      {/* ── KPI CARDS ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {sectors.map(s => (
+          <div key={s.id} style={{
+            background:'#0d1f3c', border:'1px solid rgba(0,245,255,0.1)',
+            borderLeft:`3px solid ${s.color}`, padding:'20px 24px', position:'relative',
+          }}>
+            <div className="flex justify-between items-start mb-4">
+              <div style={{ color:s.color, opacity:0.8 }}>{s.icon}</div>
+              {isLoading && <Loader2 size={12} className="animate-spin" style={{ color:'#1a3a50' }}/>}
+            </div>
+            <div style={{ ...mono, fontSize:9, color:'#2a6080', letterSpacing:2,
+              textTransform:'uppercase', marginBottom:4 }}>{s.name}</div>
+            <div style={{ ...orb, fontSize:28, fontWeight:700, color:s.color,
+              textShadow:`0 0 16px ${s.color}60`, lineHeight:1 }}>
+              ${s.total.toLocaleString()}
+            </div>
+            <div style={{ marginTop:12, height:3, background:'rgba(255,255,255,0.04)' }}>
+              <div style={{
+                width:`${grandTotal>0 ? Math.min((s.total/grandTotal)*100,100) : 0}%`,
+                height:'100%', background:s.color,
+                boxShadow:`0 0 8px ${s.color}`, transition:'width 1s ease',
+              }}/>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-12 gap-8 flex-1">
-        <section className="col-span-4 bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-8">
-            <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-8 flex items-center gap-2">
-                <PieChart size={14} className="text-blue-500" /> 戰區貢獻度
-            </h2>
-            <div className="space-y-6">
-                {sectors.map(s => (
-                    <div key={s.id} className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold">
-                            <span className="text-gray-500">{s.name}</span>
-                            <span className="text-white">{grandTotal > 0 ? Math.round((s.total / grandTotal) * 100) : 0}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                            <div className={`${s.color.replace('text', 'bg')} transition-all duration-1000`} style={{ width: `${grandTotal > 0 ? (s.total / grandTotal) * 100 : 0}%` }} />
-                        </div>
-                    </div>
-                ))}
-            </div>
+      {/* ── BOTTOM GRID ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1">
+
+        {/* Pie chart side */}
+        <section className="md:col-span-4"
+          style={{ background:'#0a1628', border:'1px solid rgba(0,245,255,0.1)', padding:'20px 24px' }}>
+          <SectionLabel><PieChart size={11} style={{ color:'#00f5ff' }}/> 戰區貢獻度</SectionLabel>
+          <div className="space-y-4">
+            {sectors.map(s => (
+              <div key={s.id}>
+                <div className="flex justify-between mb-1">
+                  <span style={{ ...mono, fontSize:10, color:'#3a6a8a' }}>{s.name}</span>
+                  <span style={{ ...mono, fontSize:10, color:'#e0f4ff', fontWeight:700 }}>
+                    {grandTotal>0 ? Math.round((s.total/grandTotal)*100) : 0}%
+                  </span>
+                </div>
+                <div style={{ height:4, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(0,245,255,0.06)' }}>
+                  <div style={{
+                    width:`${grandTotal>0?(s.total/grandTotal)*100:0}%`,
+                    height:'100%', background:s.color,
+                    boxShadow:`0 0 6px ${s.color}`, transition:'width 1s ease',
+                  }}/>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
-        <section className="col-span-8 space-y-6">
-            <div className="flex items-center justify-between px-4">
-                <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] flex items-center gap-2">
-                    <BarChart3 size={14} className="text-blue-500" /> 真實營收日誌
-                </h2>
-                <button 
-                    onClick={() => mutate()}
-                    className="flex items-center gap-2 text-[9px] font-black text-blue-500 hover:text-white transition-colors"
-                >
-                    <RefreshCcw size={12}/> 立即同步最新數據
-                </button>
-            </div>
-            
-            <div className="bg-white/[0.01] border border-white/5 rounded-[2rem] overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-white/[0.02] border-b border-white/5">
-                        <tr>
-                            <th className="p-5 text-[9px] font-black text-gray-700 uppercase tracking-widest">時間</th>
-                            <th className="p-5 text-[9px] font-black text-gray-700 uppercase tracking-widest">戰區</th>
-                            <th className="p-5 text-[9px] font-black text-gray-700 uppercase tracking-widest text-right">當日累計</th>
-                            <th className="p-5 text-[9px] font-black text-gray-700 uppercase tracking-widest text-center">狀態</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-xs">
-                        {revToday.length > 0 ? revToday.map((row: any, i: number) => (
-                            <tr key={i} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors group">
-                                <td className="p-5 font-mono text-gray-500">{row.date}</td>
-                                <td className="p-5 font-black text-white">{row.store}</td>
-                                <td className="p-5 text-right font-black text-green-400 tabular-nums">${row.total.toLocaleString()}</td>
-                                <td className="p-5 text-center">
-                                    <span className="text-[8px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded border border-green-500/20 uppercase">Live Data</span>
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan={4} className="p-10 text-center text-xs italic opacity-20 tracking-widest">今日暫無門市數據，歐文正在監聽中...</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+        {/* Revenue log table */}
+        <section className="md:col-span-8"
+          style={{ background:'#0a1628', border:'1px solid rgba(0,245,255,0.1)', display:'flex', flexDirection:'column' }}>
+          <div className="flex items-center justify-between p-4"
+            style={{ borderBottom:'1px solid rgba(0,245,255,0.08)' }}>
+            <SectionLabel><BarChart3 size={11} style={{ color:'#00f5ff' }}/> 真實營收日誌</SectionLabel>
+            <button
+              onClick={() => mutate()}
+              className="flex items-center gap-2 transition-colors hover:opacity-80"
+              style={{ ...mono, fontSize:9, color:'#00f5ff', letterSpacing:1 }}
+            >
+              <RefreshCcw size={11}/> 立即同步
+            </button>
+          </div>
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr style={{ borderBottom:'1px solid rgba(0,245,255,0.08)' }}>
+                  {['時間','戰區','當日累計','狀態'].map(h => (
+                    <th key={h} className="px-4 py-3"
+                      style={{ ...mono, fontSize:8, letterSpacing:2, color:'#1a3a50', textTransform:'uppercase' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {revToday.length > 0 ? revToday.map((row: any, i: number) => (
+                  <tr key={i}
+                    className="group transition-all"
+                    style={{ borderBottom:'1px solid rgba(0,245,255,0.04)' }}
+                  >
+                    <td className="px-4 py-3" style={{ ...mono, fontSize:10, color:'#2a6080' }}>{row.date}</td>
+                    <td className="px-4 py-3 font-bold text-xs" style={{ color:'#e0f4ff' }}>{row.store}</td>
+                    <td className="px-4 py-3 text-right font-bold text-xs tabular-nums"
+                      style={{ ...orb, color:'#00ff88', textShadow:'0 0 8px rgba(0,255,136,0.4)' }}>
+                      ${row.total.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span style={{ ...mono, fontSize:8, padding:'2px 8px',
+                        background:'rgba(0,255,136,0.08)', color:'#00ff88',
+                        border:'1px solid rgba(0,255,136,0.25)', letterSpacing:1 }}>
+                        LIVE
+                      </span>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-12 text-center"
+                      style={{ ...mono, fontSize:9, color:'#1a3a50', letterSpacing:3 }}>
+                      // 今日暫無門市數據，監控中...
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </div>

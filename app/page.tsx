@@ -1,126 +1,260 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Activity, Search, Zap, Loader2, Wallet, Target, Globe
-} from 'lucide-react';
+import { Activity, Loader2, Wallet } from 'lucide-react';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then(res => {
-    if (!res.ok) throw new Error('Unauthorized');
-    return res.json();
+  if (!res.ok) throw new Error('Unauthorized');
+  return res.json();
 });
+
+// ── Cyber typography helpers ──────────────────────────────────────────────────
+const mono = { fontFamily: "'Share Tech Mono', monospace" } as const;
+const orb  = { fontFamily: "'Orbitron', monospace" }        as const;
 
 export default function MissionControl() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const DAILY_GOAL = 80000;
 
-  const { data: activities = [], isLoading: actLoading } = useSWR('/api/activity', fetcher, { refreshInterval: 10000 });
-  const { data: revenue = [], isLoading: revLoading } = useSWR('/api/notion/revenue', fetcher, { refreshInterval: 300000 });
+  const { data: activities = [], isLoading: actLoading } =
+    useSWR('/api/activity', fetcher, { refreshInterval: 10000 });
+  const { data: revenue = [], isLoading: revLoading } =
+    useSWR('/api/notion/revenue', fetcher, { refreshInterval: 300000 });
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
-  // 營收計算邏輯 (保持原有軍事規格)
-  const todayStr = new Date().toISOString().split('T')[0];
-  const revToday = Array.isArray(revenue) ? revenue.filter((r: any) => r.date === todayStr) : [];
-  const hsinfengTotal = revToday.filter((r: any) => r.store === '新豐').reduce((s, r) => s + r.total, 0);
-  const zhubeiTotal = revToday.filter((r: any) => r.store === '竹北').reduce((s, r) => s + r.total, 0);
-  const websiteTotal = revToday.filter((r: any) => r.store === '官網').reduce((s, r) => s + r.total, 0);
-  const grandTotal = hsinfengTotal + zhubeiTotal + websiteTotal;
-
-  const hfPercent = (hsinfengTotal / DAILY_GOAL) * 100;
-  const zbPercent = (zhubeiTotal / DAILY_GOAL) * 100;
-  const webPercent = (websiteTotal / DAILY_GOAL) * 100;
+  // ── Original revenue logic (unchanged) ────────────────────────────────────
+  const todayStr   = new Date().toISOString().split('T')[0];
+  const revToday   = Array.isArray(revenue) ? revenue.filter((r: any) => r.date === todayStr) : [];
+  const hsinfengTotal  = revToday.filter((r:any) => r.store === '新豐').reduce((s:number,r:any) => s+r.total, 0);
+  const zhubeiTotal    = revToday.filter((r:any) => r.store === '竹北').reduce((s:number,r:any) => s+r.total, 0);
+  const websiteTotal   = revToday.filter((r:any) => r.store === '官網').reduce((s:number,r:any) => s+r.total, 0);
+  const grandTotal     = hsinfengTotal + zhubeiTotal + websiteTotal;
+  const hfPercent      = Math.min((hsinfengTotal / DAILY_GOAL) * 100, 100);
+  const zbPercent      = Math.min((zhubeiTotal   / DAILY_GOAL) * 100, 100);
+  const webPercent     = Math.min((websiteTotal  / DAILY_GOAL) * 100, 100);
   const overallPercent = Math.min(Math.round((grandTotal / DAILY_GOAL) * 100), 100);
 
-  return (
-    <div className="h-full w-full bg-[#030303] text-gray-400 font-sans p-4 md:p-8 flex flex-col overflow-y-auto md:overflow-hidden selection:bg-blue-500/30">
-      
-      {/* 🚀 主佈局：手機版改為垂直堆疊 (flex-col)，桌面板保持 grid */}
-      <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-6 md:gap-10 overflow-visible md:overflow-hidden">
-        
-        {/* 🟢 中間區塊：核心數據 (在手機版我把它移到最上面，因為最重要！) */}
-        <section className="order-1 md:order-none md:col-span-6 flex flex-col items-center justify-center py-6 md:py-0">
-          <div className="text-center w-full max-w-2xl px-2">
-            
-            {/* 業績整合進度條 (手機版加大感知) */}
-            <div className="mb-10 md:mb-20 w-full animate-in fade-in duration-1000">
-                <div className="flex justify-between items-end mb-4 px-2">
-                    <div className="text-left">
-                        <span className="text-[9px] md:text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] block">德谷拉騎士營收監測</span>
-                        <div className="text-xl md:text-2xl font-black text-white mt-1 tabular-nums">
-                            ${grandTotal.toLocaleString()} <span className="text-gray-700 text-xs md:text-sm font-bold">/ ${DAILY_GOAL.toLocaleString()}</span>
-                        </div>
-                    </div>
-                    <div className="text-right flex flex-col items-end">
-                        <span className="text-3xl md:text-4xl font-black text-blue-500 italic tabular-nums">{overallPercent}%</span>
-                    </div>
-                </div>
-                {/* 三色能量槽 */}
-                <div className="h-4 md:h-5 w-full bg-white/5 rounded-full overflow-hidden border border-white/10 p-[2px] flex shadow-[0_0_30px_rgba(0,0,0,0.5)]">
-                    <div className="h-full bg-blue-600 transition-all duration-1000 shadow-[0_0_15px_#2563eb]" style={{ width: `${hfPercent}%` }} />
-                    <div className="h-full bg-cyan-400 transition-all duration-1000 shadow-[0_0_15px_#22d3ee]" style={{ width: `${zbPercent}%` }} />
-                    <div className="h-full bg-emerald-500 transition-all duration-1000 shadow-[0_0_15px_#10b981]" style={{ width: `${webPercent}%` }} />
-                </div>
-            </div>
+  const stores = [
+    { name: '新豐門市', total: hsinfengTotal, pct: hfPercent, color: '#00f5ff' },
+    { name: '竹北門市', total: zhubeiTotal,   pct: zbPercent, color: '#ff006e' },
+    { name: '官網業績', total: websiteTotal,  pct: webPercent,color: '#00ff88' },
+  ];
 
-            {/* 搜尋框 (手機版窄化) */}
-            <div className="relative group w-full px-2">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-blue-500 transition-colors" size={18} />
-              <input type="text" placeholder="輸入指令或關鍵字..." className="w-full bg-[#0a0a0a] border border-white/5 rounded-xl py-4 md:py-6 pl-14 pr-6 text-sm text-white font-bold tracking-widest focus:outline-none focus:border-blue-500/30 transition-all" />
+  return (
+    <div
+      className="h-full w-full flex flex-col overflow-y-auto md:overflow-hidden"
+      style={{ background:'#020409', color:'#c8e6f5', position:'relative', zIndex:1 }}
+    >
+      {/* ── TICKER TAPE ──────────────────────────────────────────────────── */}
+      <div style={{
+        height:28, overflow:'hidden', flexShrink:0,
+        borderBottom:'1px solid rgba(0,245,255,0.1)',
+        background:'#060d1a', display:'flex', alignItems:'center',
+      }}>
+        <div className="ticker-animate flex gap-10 whitespace-nowrap pl-full" style={{ paddingLeft:'100%' }}>
+          {['新豐 TODAY','竹北 TODAY','官網 TODAY','NVDA +3.4%','BTC +2.1%','目標進度 0%',
+            '新豐 TODAY','竹北 TODAY','官網 TODAY','NVDA +3.4%','BTC +2.1%','目標進度 0%'
+          ].map((t,i) => (
+            <span key={i} style={{ ...mono, fontSize:10, letterSpacing:2,
+              color: t.includes('+') ? '#00ff88' : '#2a6080' }}>
+              {t.includes('+') ? '▲' : '◆'} {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── MAIN GRID ────────────────────────────────────────────────────── */}
+      <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-0 overflow-visible md:overflow-hidden">
+
+        {/* ── LEFT: 情資流 ─────────────────────────────────────────────── */}
+        <section className="order-2 md:order-none md:col-span-3 flex flex-col overflow-hidden p-4 md:p-6"
+          style={{ borderRight:'1px solid rgba(0,245,255,0.08)' }}>
+
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Activity size={11} style={{ color:'#00f5ff' }} />
+              <span style={{ ...mono, fontSize:9, letterSpacing:3, color:'#2a6080', textTransform:'uppercase' }}>
+                即時情資流
+              </span>
             </div>
+            {actLoading && <Loader2 size={9} className="animate-spin" style={{ color:'#00f5ff' }} />}
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 max-h-[260px] md:max-h-full">
+            {(activities as any[]).map((act: any) => (
+              <div key={act.id}
+                className="relative pl-4 py-2"
+                style={{ borderLeft:'1px solid rgba(0,245,255,0.2)' }}
+              >
+                <div className="absolute -left-[4px] top-2 w-2 h-2 rounded-full"
+                  style={{ background:'#00f5ff', boxShadow:'0 0 8px #00f5ff' }} />
+                <span style={{ ...mono, fontSize:8, color:'rgba(0,245,255,0.4)', display:'block', marginBottom:2 }}>
+                  {act.created_at
+                    ? new Date(act.created_at).toLocaleTimeString('zh-TW',{hour12:false})
+                    : 'RECENT'}
+                </span>
+                <h3 className="font-bold leading-snug text-xs" style={{ color:'#e0f4ff' }}>{act.title}</h3>
+                <p className="mt-1 line-clamp-2" style={{ ...mono, fontSize:9, color:'#3a6a8a' }}>
+                  {act.description}
+                </p>
+              </div>
+            ))}
+            {!actLoading && (activities as any[]).length === 0 && (
+              <div style={{ ...mono, fontSize:9, color:'#1a3a50', textAlign:'center', marginTop:40 }}>
+                // NO ACTIVITY DATA
+              </div>
+            )}
           </div>
         </section>
 
-        {/* 🟢 左側：情資流 (手機版高度受控) */}
-        <section className="order-2 md:order-none md:col-span-3 flex flex-col overflow-hidden border-t md:border-t-0 md:border-r border-white/5 pt-6 md:pt-0 md:pr-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] flex items-center gap-2">
-              <Activity size={12} className="text-blue-500" /> 即時情資流
-            </h2>
-            {actLoading && <Loader2 size={10} className="animate-spin text-blue-500" />}
+        {/* ── CENTER: 核心數據 ──────────────────────────────────────────── */}
+        <section className="order-1 md:order-none md:col-span-6 flex flex-col items-center justify-center p-6 md:p-10">
+
+          {/* Revenue block */}
+          <div className="w-full max-w-xl mb-8 md:mb-12 fade-up"
+            style={{
+              background:'#0d1f3c',
+              border:'1px solid rgba(0,245,255,0.15)',
+              padding:'24px 28px',
+              position:'relative',
+            }}
+          >
+            {/* corner deco */}
+            {[
+              { top:0, left:0,  borderWidth:'2px 0 0 2px' },
+              { top:0, right:0, borderWidth:'2px 2px 0 0' },
+              { bottom:0, left:0,  borderWidth:'0 0 2px 2px' },
+              { bottom:0, right:0, borderWidth:'0 2px 2px 0' },
+            ].map((s,i) => (
+              <span key={i} style={{
+                position:'absolute', width:12, height:12,
+                borderColor:'#00f5ff', borderStyle:'solid', opacity:.5, ...s
+              }}/>
+            ))}
+
+            <div className="flex justify-between items-end mb-4">
+              <div>
+                <div style={{ ...mono, fontSize:9, color:'rgba(0,245,255,0.6)', letterSpacing:4, textTransform:'uppercase', marginBottom:6 }}>
+                  德谷拉騎士 // 營收監測
+                </div>
+                <div style={{ ...orb, fontSize:32, fontWeight:900, color:'#00f5ff',
+                  textShadow:'0 0 20px rgba(0,245,255,0.4)', lineHeight:1 }}>
+                  ${grandTotal.toLocaleString()}
+                </div>
+                <div style={{ ...mono, fontSize:11, color:'#2a6080', marginTop:4 }}>
+                  / ${DAILY_GOAL.toLocaleString()} 日目標
+                </div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ ...orb, fontSize:48, fontWeight:900,
+                  color: overallPercent >= 100 ? '#00ff88' : overallPercent > 50 ? '#00f5ff' : '#2a6080',
+                  lineHeight:1 }}>
+                  {overallPercent}%
+                </div>
+              </div>
+            </div>
+
+            {/* 三色能量槽 (original logic) */}
+            <div style={{
+              height:8, background:'rgba(255,255,255,0.04)',
+              border:'1px solid rgba(0,245,255,0.1)', display:'flex', overflow:'hidden',
+            }}>
+              <div style={{ width:`${hfPercent}%`, background:'#00f5ff',
+                boxShadow:'0 0 12px rgba(0,245,255,0.6)', transition:'width 1s ease' }} />
+              <div style={{ width:`${zbPercent}%`, background:'#ff006e',
+                boxShadow:'0 0 12px rgba(255,0,110,0.6)', transition:'width 1s ease' }} />
+              <div style={{ width:`${webPercent}%`, background:'#00ff88',
+                boxShadow:'0 0 12px rgba(0,255,136,0.6)', transition:'width 1s ease' }} />
+            </div>
+
+            <div className="flex justify-between mt-2">
+              {['$0','$20K','$40K','$60K','$80K'].map(l => (
+                <span key={l} style={{ ...mono, fontSize:9, color:'#1a3a50' }}>{l}</span>
+              ))}
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[300px] md:max-h-full space-y-6 pr-2 custom-scrollbar">
-            {activities.map((act: any) => (
-              <div key={act.id} className="relative pl-6 border-l border-blue-500/20 py-1 mb-4">
-                <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]" />
-                <span className="text-[8px] font-bold text-blue-500/50 block mb-1">
-                   {act.created_at ? new Date(act.created_at).toLocaleTimeString('zh-TW', { hour12: false }) : 'RECENT'}
-                </span>
-                <h3 className="text-xs font-bold text-gray-200 leading-snug">{act.title}</h3>
-                <p className="text-[9px] text-gray-500 mt-1 line-clamp-2">{act.description}</p>
+
+          {/* Store KPI cards */}
+          <div className="grid grid-cols-3 gap-3 w-full max-w-xl mb-8">
+            {stores.map((s) => (
+              <div key={s.name}
+                style={{
+                  background:'#0a1628', border:'1px solid rgba(0,245,255,0.1)',
+                  padding:'14px 16px', position:'relative', overflow:'hidden',
+                  borderLeft:`3px solid ${s.color}`,
+                }}
+              >
+                <div style={{ ...mono, fontSize:8, letterSpacing:2, color:'#2a6080',
+                  textTransform:'uppercase', marginBottom:6 }}>{s.name}</div>
+                <div style={{ ...orb, fontSize:20, fontWeight:700, color:s.color,
+                  textShadow:`0 0 14px ${s.color}80` }}>
+                  ${s.total.toLocaleString()}
+                </div>
+                {/* mini bar */}
+                <div style={{ marginTop:8, height:2, background:'rgba(255,255,255,0.05)' }}>
+                  <div style={{ width:`${s.pct}%`, height:'100%',
+                    background:s.color, transition:'width 1s ease', boxShadow:`0 0 6px ${s.color}` }} />
+                </div>
               </div>
             ))}
           </div>
+
+          {/* Footer badge */}
+          <div style={{ ...mono, fontSize:9, letterSpacing:3, color:'#1a3a50',
+            textTransform:'uppercase', textAlign:'center' }}>
+            DRACULA COMMAND EST. 2026 // ADAPTIVE MODE
+          </div>
         </section>
 
-        {/* 🟢 右側：財報動態 (手機版顯示在最底) */}
-        <section className="order-3 md:order-none md:col-span-3 flex flex-col overflow-hidden border-t md:border-t-0 md:border-l border-white/5 pt-6 md:pt-0 md:pl-6">
-            <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                <Wallet size={12} className="text-green-500" /> 門市分項業績
-            </h2>
-            <div className="space-y-3 overflow-y-auto max-h-[300px] md:max-h-full pr-2 custom-scrollbar">
-                {Array.isArray(revenue) && revenue.slice(0, 8).map((rev: any) => (
-                    <div key={rev.id} className="bg-white/[0.02] border border-white/5 p-3 rounded-xl flex justify-between items-center group hover:bg-white/[0.05] transition-all">
-                        <div className="overflow-hidden">
-                            <span className="text-[7px] font-black text-gray-600 uppercase block mb-0.5">{rev.date}</span>
-                            <h4 className="text-[10px] font-bold text-gray-200 truncate">{rev.store}</h4>
-                        </div>
-                        <div className="text-right font-black text-white tabular-nums text-xs">${rev.total.toLocaleString()}</div>
-                    </div>
-                ))}
+        {/* ── RIGHT: 門市分項業績 ───────────────────────────────────────── */}
+        <section className="order-3 md:order-none md:col-span-3 flex flex-col overflow-hidden p-4 md:p-6"
+          style={{ borderLeft:'1px solid rgba(0,245,255,0.08)' }}>
+
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Wallet size={11} style={{ color:'#00ff88' }} />
+              <span style={{ ...mono, fontSize:9, letterSpacing:3, color:'#2a6080', textTransform:'uppercase' }}>
+                門市分項業績
+              </span>
             </div>
+            {revLoading && <Loader2 size={9} className="animate-spin" style={{ color:'#00ff88' }} />}
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 max-h-[260px] md:max-h-full">
+            {Array.isArray(revenue) && (revenue as any[]).slice(0, 10).map((rev: any) => (
+              <div key={rev.id}
+                className="flex justify-between items-center group transition-all"
+                style={{
+                  background:'rgba(13,31,60,0.6)',
+                  border:'1px solid rgba(0,245,255,0.07)',
+                  padding:'10px 12px',
+                }}
+              >
+                <div>
+                  <span style={{ ...mono, fontSize:7, color:'#1a3a50', display:'block', marginBottom:2 }}>
+                    {rev.date}
+                  </span>
+                  <span className="font-bold text-xs" style={{ color:'#c8e6f5' }}>{rev.store}</span>
+                </div>
+                <div style={{ ...orb, fontSize:13, fontWeight:700, color:'#00ff88',
+                  textShadow:'0 0 10px rgba(0,255,136,0.4)' }}>
+                  ${rev.total.toLocaleString()}
+                </div>
+              </div>
+            ))}
+            {!revLoading && Array.isArray(revenue) && (revenue as any[]).length === 0 && (
+              <div style={{ ...mono, fontSize:9, color:'#1a3a50', textAlign:'center', marginTop:40 }}>
+                // AWAITING NOTION SYNC
+              </div>
+            )}
+          </div>
         </section>
-
       </main>
-
-      <footer className="h-8 md:h-10 mt-6 flex justify-center md:justify-between items-center border-t border-white/5 text-[7px] md:text-[8px] font-bold text-gray-700 tracking-[0.2em] uppercase shrink-0">
-        <div className="hidden md:block">DRACULA COMMAND EST. 2026 // ADAPTIVE MODE</div>
-        <div className="text-blue-600/30 italic">MOBILE_STATION_ACTIVE</div>
-      </footer>
     </div>
   );
 }

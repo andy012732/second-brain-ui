@@ -1,131 +1,163 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  LineChart, TrendingUp, Search, Plus, 
-  ArrowUpRight, ArrowDownRight, Zap, Star,
-  Activity, DollarSign, BarChart3
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingUp, ArrowUpRight, ArrowDownRight, Star, Activity, Search } from 'lucide-react';
+
+const mono = { fontFamily: "'Share Tech Mono', monospace" } as const;
+const orb  = { fontFamily: "'Orbitron', monospace" }        as const;
 
 export default function StocksDashboard() {
-  const [watchlist, setWatchlist] = useState([
-    { symbol: 'NVDA', name: 'NVIDIA', price: 739.42, change: 15.2, percent: '+2.1%', status: 'up' },
-    { symbol: 'TSLA', name: 'Tesla, Inc.', price: 188.45, change: -3.1, percent: '-1.6%', status: 'down' },
-    { symbol: 'AAPL', name: 'Apple Inc.', price: 182.31, change: 0.45, percent: '+0.2%', status: 'up' }
+  const [watchlist] = useState([
+    { symbol:'NVDA', name:'NVIDIA',          price:739.42,  change:+15.2, percent:'+2.1%', up:true,  pinned:true  },
+    { symbol:'TSLA', name:'Tesla, Inc.',      price:188.45,  change:-3.1,  percent:'-1.6%', up:false, pinned:true  },
+    { symbol:'AAPL', name:'Apple Inc.',       price:182.31,  change:+0.45, percent:'+0.2%', up:true,  pinned:false },
+    { symbol:'META', name:'Meta Platforms',   price:502.80,  change:+3.1,  percent:'+0.6%', up:true,  pinned:false },
+    { symbol:'MSFT', name:'Microsoft',        price:415.60,  change:+3.7,  percent:'+0.9%', up:true,  pinned:false },
+    { symbol:'BTC',  name:'Bitcoin / USD',    price:67400,   change:1400,  percent:'+2.1%', up:true,  pinned:false },
   ]);
 
+  const miniPath = (up: boolean) => up
+    ? "M0,35 C20,30 40,25 60,22 C80,18 100,12 120,8"
+    : "M0,10 C20,14 40,18 60,20 C80,24 100,28 120,32";
+
   return (
-    <div className="h-full w-full bg-[#030303] text-gray-400 font-sans p-8 flex flex-col overflow-y-auto selection:bg-green-500/30">
-      
-      {/* 🟢 頂部搜尋與新增 */}
-      <div className="flex justify-between items-center mb-10 shrink-0">
+    <div className="h-full w-full overflow-y-auto p-4 md:p-8 flex flex-col gap-6"
+      style={{ background:'#020409', color:'#c8e6f5', position:'relative', zIndex:1 }}>
+
+      {/* Header */}
+      <div className="flex justify-between items-end">
         <div>
-            <h2 className="text-xl font-black text-white tracking-widest uppercase">美股戰情觀測台</h2>
-            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">Market Sector / US Equities</p>
+          <div style={{ ...orb, fontSize:20, fontWeight:900, color:'#e0f4ff', letterSpacing:2 }}>
+            美股戰情觀測台
+          </div>
+          <div style={{ ...mono, fontSize:9, color:'#2a6080', letterSpacing:3, marginTop:4 }}>
+            MARKET SECTOR // US EQUITIES
+          </div>
         </div>
-        <div className="relative group max-w-sm w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-green-500" size={16} />
-            <input 
-                type="text" 
-                placeholder="輸入股票代號 (如: MSFT)..."
-                className="w-full bg-white/5 border border-white/5 rounded-xl py-3 pl-12 pr-4 text-xs text-white font-bold tracking-widest focus:outline-none focus:border-green-500/30 transition-all shadow-inner"
-            />
+        <div style={{
+          display:'flex', alignItems:'center', gap:8,
+          background:'#0a1628', border:'1px solid rgba(0,245,255,0.1)',
+          padding:'8px 14px',
+        }}>
+          <Search size={12} style={{ color:'#2a6080' }}/>
+          <input
+            type="text" placeholder="股票代號..."
+            style={{ background:'transparent', border:'none', outline:'none',
+              color:'#c8e6f5', ...mono, fontSize:11, width:120 }}
+          />
         </div>
       </div>
 
-      {/* 🟢 主標的看板 (Pinned) */}
-      <div className="grid grid-cols-2 gap-8 mb-12 shrink-0">
-        {watchlist.filter(s => s.symbol !== 'AAPL').map((stock) => (
-          <div key={stock.symbol} className="bg-white/[0.02] border border-white/5 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group hover:border-white/10 transition-all">
-            {/* 背景飾紋 */}
-            <div className={`absolute top-0 right-0 p-10 opacity-[0.03] transition-transform group-hover:scale-110`}>
-                <TrendingUp size={120} className={stock.status === 'up' ? 'text-green-500' : 'text-rose-500'} />
+      {/* Pinned cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {watchlist.filter(s => s.pinned).map(stock => (
+          <div key={stock.symbol}
+            style={{
+              background:'#0d1f3c',
+              border:`1px solid ${stock.up ? 'rgba(0,255,136,0.15)' : 'rgba(255,0,110,0.15)'}`,
+              borderLeft:`3px solid ${stock.up ? '#00ff88' : '#ff006e'}`,
+              padding:'24px 28px', position:'relative', overflow:'hidden',
+            }}
+          >
+            {/* bg icon */}
+            <div style={{ position:'absolute', top:16, right:16, opacity:0.04 }}>
+              <TrendingUp size={80} style={{ color: stock.up ? '#00ff88':'#ff006e' }}/>
             </div>
-            
-            <div className="flex justify-between items-start relative z-10">
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">主力標的</span>
-                        <Star size={10} className="text-yellow-500 fill-current" />
-                    </div>
-                    <div className="text-4xl font-black text-white tracking-tighter mb-1">{stock.symbol}</div>
-                    <div className="text-xs text-gray-500 font-bold uppercase">{stock.name}</div>
+
+            <div className="flex justify-between items-start relative z-10 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span style={{ ...mono, fontSize:9, color:'#2a6080', letterSpacing:2 }}>主力標的</span>
+                  <Star size={10} style={{ color:'#ffe600', fill:'#ffe600' }}/>
                 </div>
-                <div className="text-right">
-                    <div className={`text-3xl font-black tabular-nums tracking-tighter ${stock.status === 'up' ? 'text-green-400' : 'text-rose-400'}`}>
-                        ${stock.price}
-                    </div>
-                    <div className={`flex items-center justify-end gap-1 text-[10px] font-black mt-2 ${stock.status === 'up' ? 'text-green-500' : 'text-rose-500'}`}>
-                        {stock.percent} {stock.status === 'up' ? <ArrowUpRight size={14}/> : <ArrowDownRight size={14}/>}
-                    </div>
+                <div style={{ ...orb, fontSize:32, fontWeight:900, color:'#e0f4ff', lineHeight:1 }}>
+                  {stock.symbol}
                 </div>
+                <div style={{ ...mono, fontSize:9, color:'#2a6080', marginTop:2 }}>{stock.name}</div>
+              </div>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ ...orb, fontSize:26, fontWeight:700,
+                  color: stock.up ? '#00ff88':'#ff006e',
+                  textShadow:`0 0 14px ${stock.up?'rgba(0,255,136,0.5)':'rgba(255,0,110,0.5)'}` }}>
+                  ${stock.price.toLocaleString()}
+                </div>
+                <div className="flex items-center justify-end gap-1 mt-1"
+                  style={{ ...mono, fontSize:10, color: stock.up?'#00ff88':'#ff006e' }}>
+                  {stock.percent}
+                  {stock.up ? <ArrowUpRight size={12}/> : <ArrowDownRight size={12}/>}
+                </div>
+              </div>
             </div>
-            
-            <div className="mt-10 h-16 w-full flex items-end gap-1 opacity-30">
-                {/* 模擬小走勢圖格 */}
-                {Array.from({ length: 20 }).map((_, i) => (
-                    <div 
-                        key={i} 
-                        className={`w-full rounded-t-[1px] ${stock.status === 'up' ? 'bg-green-500' : 'bg-rose-500'}`}
-                        style={{ height: `${Math.random() * 100}%` }}
-                    />
-                ))}
-            </div>
+
+            {/* Mini chart */}
+            <svg viewBox="0 0 120 40" style={{ width:'100%', height:40, opacity:0.4 }}>
+              <path d={miniPath(stock.up)}
+                stroke={stock.up ? '#00ff88':'#ff006e'}
+                strokeWidth="1.5" fill="none"/>
+            </svg>
           </div>
         ))}
       </div>
 
-      {/* 🟢 次標觀察清單 (Watchlist) */}
-      <section className="space-y-6">
-        <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] flex items-center gap-2 px-2">
-          <Activity size={12} className="text-blue-500" /> 次要觀察矩陣
-        </h2>
-        <div className="bg-white/[0.01] border border-white/5 rounded-[2rem] overflow-hidden shadow-inner">
-            <table className="w-full text-left border-collapse">
-                <thead>
-                    <tr className="border-b border-white/5">
-                        <th className="p-6 text-[9px] font-black text-gray-700 uppercase tracking-widest">代號</th>
-                        <th className="p-6 text-[9px] font-black text-gray-700 uppercase tracking-widest text-right">當前價格</th>
-                        <th className="p-6 text-[9px] font-black text-gray-700 uppercase tracking-widest text-right">漲跌幅</th>
-                        <th className="p-6 text-[9px] font-black text-gray-700 uppercase tracking-widest text-center">趨勢</th>
-                        <th className="p-6 text-[9px] font-black text-gray-700 uppercase tracking-widest text-right">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {watchlist.map((stock) => (
-                        <tr key={stock.symbol} className="hover:bg-white/[0.02] transition-colors border-b border-white/[0.02] group">
-                            <td className="p-6">
-                                <div className="text-sm font-black text-white">{stock.symbol}</div>
-                                <div className="text-[9px] text-gray-600 font-bold uppercase">{stock.name}</div>
-                            </td>
-                            <td className="p-6 text-right tabular-nums text-sm font-bold text-gray-200">${stock.price}</td>
-                            <td className={`p-6 text-right tabular-nums text-sm font-black ${stock.status === 'up' ? 'text-green-500' : 'text-rose-500'}`}>
-                                {stock.percent}
-                            </td>
-                            <td className="p-6">
-                                <div className="flex justify-center gap-0.5 h-4">
-                                    {Array.from({ length: 10 }).map((_, i) => (
-                                        <div key={i} className="w-1 bg-white/10 rounded-full h-full" />
-                                    ))}
-                                </div>
-                            </td>
-                            <td className="p-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-2 hover:bg-white/10 rounded-lg text-gray-500 hover:text-white transition-all"><Zap size={14} /></button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+      {/* Watchlist table */}
+      <div style={{ background:'#0a1628', border:'1px solid rgba(0,245,255,0.1)' }}>
+        <div style={{ padding:'12px 20px', borderBottom:'1px solid rgba(0,245,255,0.08)',
+          ...mono, fontSize:9, color:'#2a6080', letterSpacing:3,
+          display:'flex', alignItems:'center', gap:6 }}>
+          <Activity size={11} style={{ color:'#00f5ff' }}/> 觀察矩陣
         </div>
-      </section>
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr style={{ borderBottom:'1px solid rgba(0,245,255,0.06)' }}>
+              {['代號','名稱','價格','漲跌幅','走勢'].map(h => (
+                <th key={h} className="px-4 py-3"
+                  style={{ ...mono, fontSize:8, letterSpacing:2, color:'#1a3a50', textTransform:'uppercase' }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {watchlist.map(s => (
+              <tr key={s.symbol}
+                className="group transition-all"
+                style={{ borderBottom:'1px solid rgba(0,245,255,0.04)' }}
+              >
+                <td className="px-4 py-3">
+                  <div style={{ ...orb, fontSize:13, fontWeight:700, color:'#e0f4ff' }}>{s.symbol}</div>
+                </td>
+                <td className="px-4 py-3">
+                  <div style={{ ...mono, fontSize:9, color:'#3a6a8a' }}>{s.name}</div>
+                </td>
+                <td className="px-4 py-3 tabular-nums">
+                  <div style={{ ...orb, fontSize:13, color:'#c8e6f5' }}>${s.price.toLocaleString()}</div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1"
+                    style={{ ...mono, fontSize:10, fontWeight:700,
+                      color: s.up ? '#00ff88':'#ff006e' }}>
+                    {s.percent}
+                    {s.up ? <ArrowUpRight size={11}/> : <ArrowDownRight size={11}/>}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <svg viewBox="0 0 60 20" style={{ width:60, height:20 }}>
+                    <path d={s.up
+                      ? "M0,18 C10,15 20,12 30,10 C40,8 50,5 60,3"
+                      : "M0,3 C10,6 20,10 30,12 C40,14 50,16 60,18"}
+                      stroke={s.up?'#00ff88':'#ff006e'}
+                      strokeWidth="1.5" fill="none" opacity="0.7"/>
+                  </svg>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <footer className="h-10 mt-12 flex justify-between items-center border-t border-white/5 text-[8px] font-bold text-gray-700 uppercase tracking-[0.2em] shrink-0">
-        <div>Ticker Server v1.0 // Real-time Simulated Link Enabled</div>
-        <div className="flex gap-4">
-            <span className="text-green-500/30">Exchange Mode: NASDAQ/NYSE</span>
-            <span className="text-green-500/30">Alert System: ARMED</span>
-        </div>
-      </footer>
+      <div style={{ ...mono, fontSize:8, color:'#1a3a50', textAlign:'center', letterSpacing:3 }}>
+        TICKER SERVER v1.0 // NASDAQ/NYSE // ALERT SYSTEM: ARMED
+      </div>
     </div>
   );
 }
