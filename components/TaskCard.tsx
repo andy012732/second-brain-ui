@@ -1,75 +1,160 @@
 'use client';
-
-import React from 'react';
-import { Calendar, MessageSquare, Star, Paperclip, Clock } from 'lucide-react';
+// ── Cyberpunk TaskCard v2 ── props interface unchanged ──
+import React, { useState } from 'react';
 import { Task } from '@/lib/kanban';
+import { Paperclip, MessageSquare, Star, Clock, AlertTriangle } from 'lucide-react';
+
+const PRIORITY_STYLE: Record<string, { color: string; label: string }> = {
+  critical: { color: '#ff2244', label: 'CRIT' },
+  high:     { color: '#ff6600', label: 'HIGH' },
+  medium:   { color: '#ffaa00', label: 'MED'  },
+  low:      { color: '#4488ff', label: 'LOW'  },
+};
+
+const TAG_COLORS: Record<string, string> = {
+  urgent:        '#ff2244',
+  bug:           '#ff6600',
+  feature:       '#00aaff',
+  documentation: '#cc44ff',
+  design:        '#00ffcc',
+};
 
 interface TaskCardProps {
   task: Task;
   onDragStart: (id: string) => void;
-  onClick: (task: Task) => void; // 新增：點擊事件
+  onClick: (task: Task) => void;
 }
 
-const priorityColors: Record<string, string> = {
-  low: 'bg-blue-500',
-  medium: 'bg-yellow-500',
-  high: 'bg-orange-500',
-  critical: 'bg-red-500',
-};
-
 export default function TaskCard({ task, onDragStart, onClick }: TaskCardProps) {
-  const getDueStatus = () => {
-    if (!task.dueDate) return null;
-    const now = new Date();
-    const due = new Date(task.dueDate);
-    const diffDays = (due.getTime() - now.getTime()) / (1000 * 3600 * 24);
-    if (diffDays < 0) return { label: 'Overdue', color: 'text-red-500' };
-    if (diffDays <= 3) return { label: 'Due soon', color: 'text-yellow-500' };
-    return { label: null, color: 'text-gray-500' };
-  };
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const dueStatus = getDueStatus();
+  const priority = PRIORITY_STYLE[task.priority] ?? PRIORITY_STYLE.low;
+
+  const now = new Date();
+  const due = task.dueDate ? new Date(task.dueDate) : null;
+  const daysLeft = due ? Math.ceil((due.getTime() - now.getTime()) / 86400000) : null;
+  const isOverdue = daysLeft !== null && daysLeft < 0;
+  const isDueSoon = daysLeft !== null && daysLeft >= 0 && daysLeft < 3;
 
   return (
     <div
       draggable
-      onDragStart={() => onDragStart(task.id)}
-      onClick={() => onClick(task)} // 點擊卡片開啟編輯視窗
-      className="bg-[#1e1e1e] p-4 rounded-xl border border-gray-800 mb-3 cursor-pointer active:scale-95 hover:border-blue-500/50 transition-all shadow-lg group relative"
+      onDragStart={e => {
+        e.dataTransfer.setData('taskId', task.id);
+        setIsDragging(true);
+        onDragStart(task.id);
+      }}
+      onDragEnd={() => setIsDragging(false)}
+      onClick={() => onClick(task)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        background: isHovered
+          ? 'rgba(20,20,28,0.95)'
+          : 'rgba(14,14,20,0.8)',
+        border: `1px solid ${isHovered ? priority.color + '66' : 'rgba(255,255,255,0.07)'}`,
+        borderLeft: `3px solid ${priority.color}`,
+        borderRadius: 6,
+        padding: '10px 12px',
+        cursor: 'grab',
+        opacity: isDragging ? 0.35 : 1,
+        transform: isHovered && !isDragging ? 'translateY(-1px)' : 'translateY(0)',
+        boxShadow: isHovered
+          ? `0 4px 20px rgba(0,0,0,0.5), 0 0 12px ${priority.color}22`
+          : '0 1px 6px rgba(0,0,0,0.3)',
+        transition: 'all 0.15s ease',
+        userSelect: 'none',
+        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+        position: 'relative',
+      }}
     >
+      {/* 釘選星 */}
       {task.isPinned && (
-        <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-1 shadow-md z-10">
-          <Star size={10} className="text-black fill-current" />
+        <Star
+          size={10}
+          fill="#ffaa00"
+          color="#ffaa00"
+          style={{ position: 'absolute', top: 8, right: 8 }}
+        />
+      )}
+
+      {/* Priority badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <span style={{
+          fontSize: 8, fontWeight: 900, letterSpacing: '0.15em',
+          color: priority.color,
+          background: priority.color + '18',
+          border: `1px solid ${priority.color}44`,
+          borderRadius: 2,
+          padding: '1px 5px',
+          lineHeight: 1.6,
+        }}>
+          {priority.label}
+        </span>
+
+        {isOverdue && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 8, color: '#ff2244', fontWeight: 900 }}>
+            <AlertTriangle size={9} /> OVERDUE
+          </span>
+        )}
+        {isDueSoon && !isOverdue && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 8, color: '#ffaa00', fontWeight: 700 }}>
+            <Clock size={9} /> {daysLeft}d
+          </span>
+        )}
+      </div>
+
+      {/* 標題 */}
+      <div style={{
+        fontSize: 12, fontWeight: 700,
+        color: isHovered ? '#fff' : '#ccc',
+        lineHeight: 1.4,
+        marginBottom: 8,
+        transition: 'color 0.15s',
+        paddingRight: task.isPinned ? 16 : 0,
+      }}>
+        {task.title}
+      </div>
+
+      {/* 標籤 */}
+      {task.tags.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+          {task.tags.slice(0, 4).map(tag => (
+            <span key={tag} style={{
+              fontSize: 8, fontWeight: 700,
+              color: TAG_COLORS[tag] ?? '#666',
+              background: (TAG_COLORS[tag] ?? '#666') + '18',
+              border: `1px solid ${(TAG_COLORS[tag] ?? '#666') + '44'}`,
+              borderRadius: 2,
+              padding: '1px 5px',
+              letterSpacing: '0.1em',
+            }}>
+              {tag}
+            </span>
+          ))}
         </div>
       )}
 
-      <div className="flex items-start gap-2 mb-3">
-        <div className={`w-1.5 h-6 rounded-full shrink-0 ${priorityColors[task.priority] || 'bg-gray-500'}`} />
-        <h3 className="text-sm font-bold text-gray-200 line-clamp-2 leading-tight">{task.title}</h3>
-      </div>
-      
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {task.tags?.map((tag: string) => (
-          <span key={tag} className="text-[9px] px-2 py-0.5 rounded-full bg-gray-900 border border-gray-700 text-gray-400 font-medium">#{tag}</span>
-        ))}
-      </div>
+      {/* 底部：截止日 + 附件 + 留言 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+        {due && !isOverdue && !isDueSoon ? (
+          <span style={{ fontSize: 9, color: '#444', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Clock size={9} />
+            {due.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}
+          </span>
+        ) : <span />}
 
-      <div className="flex items-center justify-between border-t border-gray-800/50 pt-3 text-[10px]">
-        <div className="flex items-center gap-3">
-          {task.dueDate && (
-            <div className={`flex items-center gap-1 font-semibold ${dueStatus?.color}`}>
-              <Clock size={11} />
-              <span>{dueStatus?.label || new Date(task.dueDate).toLocaleDateString()}</span>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {task.attachments.length > 0 && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#555' }}>
+              <Paperclip size={9} /> {task.attachments.length}
+            </span>
           )}
-        </div>
-        
-        <div className="flex items-center gap-3 text-gray-500">
-          {task.comments?.length > 0 && (
-            <div className="flex items-center gap-1">
-              <MessageSquare size={11} />
-              <span>{task.comments.length}</span>
-            </div>
+          {task.comments.length > 0 && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 9, color: '#555' }}>
+              <MessageSquare size={9} /> {task.comments.length}
+            </span>
           )}
         </div>
       </div>

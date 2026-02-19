@@ -1,27 +1,28 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Target, CheckCircle } from 'lucide-react';
+import { Plus, Target, CheckCircle, Zap, Clock } from 'lucide-react';
 import { Task } from '@/lib/kanban';
 import CreateTaskModal from '@/components/CreateTaskModal';
 import TaskDetailModal from '@/components/TaskDetailModal';
 import KanbanColumn from '@/components/KanbanColumn';
 
 const COLUMNS = [
-  { id: 'todo', title: '待辦事項', color: 'border-gray-500' },
-  { id: 'ongoing', title: '進行中', color: 'border-blue-500' },
-  { id: 'pending', title: '等待中', color: 'border-yellow-500' },
-  { id: 'review', title: '審核中', color: 'border-purple-500' },
-  { id: 'done', title: '已完成', color: 'border-green-500' },
-  { id: 'archive', title: '封存', color: 'border-gray-700' },
+  { id: 'todo',    title: '待辦事項', label: 'TODO',    neon: '#888',   glow: 'rgba(150,150,150,0.15)' },
+  { id: 'ongoing', title: '進行中',  label: 'ACTIVE',  neon: '#00aaff', glow: 'rgba(0,170,255,0.15)' },
+  { id: 'pending', title: '等待中',  label: 'PENDING', neon: '#ffaa00', glow: 'rgba(255,170,0,0.15)' },
+  { id: 'review',  title: '審核中',  label: 'REVIEW',  neon: '#cc44ff', glow: 'rgba(204,68,255,0.15)' },
+  { id: 'done',    title: '已完成',  label: 'DONE',    neon: '#00ff88', glow: 'rgba(0,255,136,0.15)' },
+  { id: 'archive', title: '封存',    label: 'ARCHIVE', neon: '#444',   glow: 'rgba(80,80,80,0.1)' },
 ] as const;
 
 export default function KanbanPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { fetchTasks(); }, []);
+  useEffect(() => { setMounted(true); fetchTasks(); }, []);
 
   const fetchTasks = async () => {
     try {
@@ -35,7 +36,6 @@ export default function KanbanPage() {
     if (newOrder === -1) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task || task.status === newStatus) return;
-
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus as any, updatedAt: new Date().toISOString() } : t));
     await fetch(`/api/tasks/${taskId}/actions`, {
       method: 'POST',
@@ -48,62 +48,154 @@ export default function KanbanPage() {
     if (selectedTask?.id === updatedTask.id) setSelectedTask(updatedTask);
   };
 
+  const activeCount = tasks.filter(t => t.status === 'ongoing').length;
   const doneCount = tasks.filter(t => t.status === 'done').length;
+  const completionRate = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
+  const overdueCount = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done' && t.status !== 'archive').length;
 
   return (
-    <div className="h-full w-full bg-[#030303] text-gray-200 flex flex-col overflow-hidden">
-      
-      {/* 🟢 頂部統計列 (保持電腦版霸氣，手機版緊湊) */}
-      <div className="h-auto md:h-20 px-4 md:px-8 py-4 md:py-0 flex flex-col md:flex-row items-center justify-between border-b border-white/5 bg-[#111] gap-4 md:gap-0 shrink-0">
-          <div className="flex gap-6 md:gap-10">
-              <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20"><Target className="text-blue-500" size={18} /></div>
-                  <div>
-                    <div className="text-[8px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest leading-none">Total Intelligence</div>
-                    <div className="text-lg md:text-xl font-mono font-bold leading-tight tabular-nums">{tasks.length}</div>
-                  </div>
-              </div>
-              <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-500/10 rounded-xl border border-green-500/20"><CheckCircle className="text-green-500" size={18} /></div>
-                  <div>
-                    <div className="text-[8px] md:text-[10px] text-gray-500 uppercase font-black tracking-widest leading-none">Successful Ops</div>
-                    <div className="text-lg md:text-xl font-mono font-bold leading-tight text-white tabular-nums">{doneCount}</div>
-                  </div>
-              </div>
-          </div>
-          <button 
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-full md:w-auto bg-[#0055ff] hover:bg-blue-500 text-white font-black text-[9px] md:text-[10px] px-6 py-2.5 rounded-full flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(37,99,235,0.2)] active:scale-95 tracking-[0.2em] uppercase"
-          >
-              <Plus size={14} /> <span>發起新任務</span>
-          </button>
-      </div>
+    <div style={{
+      height: '100%', width: '100%',
+      background: '#050507',
+      color: '#ccc',
+      display: 'flex', flexDirection: 'column',
+      overflow: 'hidden',
+      fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+    }}>
 
-      {/* 🚀 看板區域：核心響應式更新 */}
-      <div className="flex-1 overflow-x-auto md:overflow-x-auto p-4 md:p-8 bg-[#030303] flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6 custom-scrollbar">
-          {COLUMNS.map(col => (
-            <div key={col.id} className="shrink-0 w-full md:w-80">
-                <KanbanColumn
-                  column={col}
-                  tasks={tasks.filter(t => t.status === col.id)}
-                  onTaskMoved={handleTaskMoved}
-                  onTaskClick={setSelectedTask}
-                  onRefresh={fetchTasks}
-                />
+      {/* ── 頂部統計列 ── */}
+      <div style={{
+        padding: '0 32px',
+        height: 72,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        background: 'rgba(10,10,14,0.95)',
+        backdropFilter: 'blur(10px)',
+        flexShrink: 0,
+        gap: 16,
+      }}>
+        {/* 左：統計數字 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+          <StatPill icon={<Target size={14} />} label="TOTAL" value={tasks.length} color="#00aaff" />
+          <StatPill icon={<Zap size={14} />} label="ACTIVE" value={activeCount} color="#ffaa00" />
+          <StatPill icon={<CheckCircle size={14} />} label="DONE" value={doneCount} color="#00ff88" />
+          {overdueCount > 0 && (
+            <StatPill icon={<Clock size={14} />} label="OVERDUE" value={overdueCount} color="#ff4444" pulse />
+          )}
+          {/* 完成率進度條 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 9, fontWeight: 900, color: '#555', letterSpacing: '0.2em' }}>COMPLETION</span>
+            <div style={{ width: 80, height: 4, background: '#1a1a1a', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${completionRate}%`,
+                background: 'linear-gradient(90deg, #00aaff, #00ff88)',
+                transition: 'width 0.8s ease',
+                boxShadow: '0 0 8px rgba(0,255,136,0.5)',
+              }} />
             </div>
-          ))}
+            <span style={{ fontSize: 11, fontWeight: 900, color: '#00ff88', fontVariantNumeric: 'tabular-nums' }}>
+              {completionRate}%
+            </span>
+          </div>
+        </div>
+
+        {/* 右：新增按鈕 */}
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          style={{
+            background: 'transparent',
+            border: '1px solid #00aaff',
+            color: '#00aaff',
+            fontSize: 10, fontWeight: 900,
+            letterSpacing: '0.2em',
+            padding: '8px 20px',
+            borderRadius: 4,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8,
+            transition: 'all 0.2s',
+            boxShadow: '0 0 12px rgba(0,170,255,0.2), inset 0 0 12px rgba(0,170,255,0.05)',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,170,255,0.1)';
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 24px rgba(0,170,255,0.4), inset 0 0 16px rgba(0,170,255,0.1)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,170,255,0.2), inset 0 0 12px rgba(0,170,255,0.05)';
+          }}
+        >
+          <Plus size={13} /> 發起任務
+        </button>
       </div>
 
-      {isCreateModalOpen && <CreateTaskModal onClose={() => setIsCreateModalOpen(false)} onTaskCreated={(newTask: Task) => {
-          if (newTask) setTasks(prev => [newTask, ...prev]);
-          setIsCreateModalOpen(false);
-      }} />}
-      
-      {selectedTask && <TaskDetailModal 
-          task={selectedTask} 
-          onClose={() => setSelectedTask(null)} 
-          onTaskUpdated={(updated: Task) => updateLocalTask(updated)} 
-      />}
+      {/* ── 看板主區域 ── */}
+      <div style={{
+        flex: 1,
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        padding: '24px 32px',
+        display: 'flex',
+        gap: 16,
+        alignItems: 'flex-start',
+      }}>
+        {COLUMNS.map(col => (
+          <KanbanColumn
+            key={col.id}
+            column={col}
+            tasks={tasks.filter(t => t.status === col.id)}
+            onTaskMoved={handleTaskMoved}
+            onTaskClick={setSelectedTask}
+            onRefresh={fetchTasks}
+          />
+        ))}
+      </div>
+
+      {isCreateModalOpen && (
+        <CreateTaskModal
+          onClose={() => setIsCreateModalOpen(false)}
+          onTaskCreated={(newTask: Task) => {
+            if (newTask) setTasks(prev => [newTask, ...prev]);
+            setIsCreateModalOpen(false);
+          }}
+        />
+      )}
+
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onTaskUpdated={(updated: Task) => updateLocalTask(updated)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── 小統計元件 ──
+function StatPill({ icon, label, value, color, pulse }: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  pulse?: boolean;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{
+        color, display: 'flex', alignItems: 'center',
+        animation: pulse ? 'pulse 1.5s ease-in-out infinite' : undefined,
+      }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontSize: 9, color: '#444', letterSpacing: '0.2em', fontWeight: 900, lineHeight: 1 }}>{label}</div>
+        <div style={{ fontSize: 18, fontWeight: 900, color, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+          {value}
+        </div>
+      </div>
+      <style>{`@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }`}</style>
     </div>
   );
 }

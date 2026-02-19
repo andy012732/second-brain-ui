@@ -5,25 +5,23 @@ import TaskCard from './TaskCard';
 import { Task } from '@/lib/kanban';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
+interface ColumnDef {
+  id: string;
+  title: string;
+  label: string;
+  neon: string;
+  glow: string;
+}
+
 interface KanbanColumnProps {
-  column: {
-    id: string;
-    title: string;
-    color: string;
-  };
+  column: ColumnDef;
   tasks: Task[];
   onTaskMoved: (taskId: string, newStatus: string, newOrder: number) => void;
-  onTaskClick: (task: Task) => void; // 新增：傳遞點擊事件
+  onTaskClick: (task: Task) => void;
   onRefresh: () => void;
 }
 
-export default function KanbanColumn({
-  column,
-  tasks,
-  onTaskMoved,
-  onTaskClick,
-  onRefresh,
-}: KanbanColumnProps) {
+export default function KanbanColumn({ column, tasks, onTaskMoved, onTaskClick }: KanbanColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
@@ -33,15 +31,12 @@ export default function KanbanColumn({
     e.preventDefault();
     setIsDraggingOver(true);
   };
-
   const handleDragLeave = () => setIsDraggingOver(false);
-
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(false);
     const taskId = e.dataTransfer.getData('taskId');
-    if (!taskId) return;
-    onTaskMoved(taskId, column.id, tasks.length);
+    if (taskId) onTaskMoved(taskId, column.id, tasks.length);
   };
 
   return (
@@ -49,35 +44,117 @@ export default function KanbanColumn({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`w-80 flex flex-col bg-[#111]/50 rounded-2xl border transition-all ${isDraggingOver ? 'border-blue-500 bg-blue-500/5' : 'border-gray-800/30'} backdrop-blur-sm shadow-xl`}
+      style={{
+        width: 272,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        background: isDraggingOver
+          ? `linear-gradient(180deg, ${column.glow} 0%, rgba(10,10,14,0.9) 100%)`
+          : 'rgba(10,10,14,0.7)',
+        border: `1px solid ${isDraggingOver ? column.neon : 'rgba(255,255,255,0.06)'}`,
+        borderRadius: 8,
+        overflow: 'hidden',
+        transition: 'all 0.2s ease',
+        boxShadow: isDraggingOver
+          ? `0 0 24px ${column.glow}, 0 0 60px ${column.glow}`
+          : '0 2px 20px rgba(0,0,0,0.4)',
+        maxHeight: 'calc(100vh - 140px)',
+      }}
     >
-      <div className={`p-4 border-b-2 ${column.color} bg-[#161616]/50 rounded-t-2xl flex justify-between items-center`}>
-        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{column.title}</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono font-bold text-gray-500 px-2 py-0.5 bg-black/40 rounded-full border border-white/5">
+      {/* 欄位標題 */}
+      <div style={{
+        padding: '12px 14px',
+        borderBottom: `1px solid rgba(255,255,255,0.05)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: `linear-gradient(135deg, rgba(10,10,14,0.9) 0%, ${column.glow} 100%)`,
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* 霓虹點 */}
+          <div style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: column.neon,
+            boxShadow: `0 0 6px ${column.neon}, 0 0 12px ${column.neon}`,
+          }} />
+          <span style={{
+            fontSize: 9, fontWeight: 900,
+            color: column.neon,
+            letterSpacing: '0.25em',
+            textShadow: `0 0 8px ${column.neon}`,
+            fontFamily: '"JetBrains Mono", monospace',
+          }}>
+            {column.label}
+          </span>
+          <span style={{
+            fontSize: 8, color: '#444',
+            letterSpacing: '0.1em',
+          }}>
+            {column.title}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* 任務數量 */}
+          <span style={{
+            fontSize: 10, fontWeight: 900,
+            color: tasks.length > 0 ? column.neon : '#333',
+            background: tasks.length > 0 ? column.glow : 'transparent',
+            border: `1px solid ${tasks.length > 0 ? column.neon + '44' : '#222'}`,
+            borderRadius: 3,
+            padding: '1px 7px',
+            fontFamily: 'monospace',
+            transition: 'all 0.3s',
+          }}>
             {tasks.length}
           </span>
-          <button onClick={() => setIsCollapsed(!isCollapsed)} className="text-gray-600 hover:text-gray-400">
-            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            style={{ color: '#444', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 2 }}
+          >
+            {isCollapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </button>
         </div>
       </div>
-      
+
+      {/* 卡片列表 */}
       {!isCollapsed && (
-        <div className="flex-1 overflow-y-auto p-4 min-h-[150px]">
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '10px 10px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          minHeight: 120,
+        }}>
           {sortedTasks.map(task => (
-            <TaskCard 
-              key={task.id} 
-              task={task} 
+            <TaskCard
+              key={task.id}
+              task={task}
+              neonColor={column.neon}
               onDragStart={(id) => onTaskMoved(id, column.id, -1)}
-              onClick={onTaskClick} // 點擊時呼叫
+              onClick={onTaskClick}
             />
           ))}
+
           {sortedTasks.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center opacity-20 py-10">
-              <div className="border-2 border-dashed border-gray-600 rounded-xl w-full h-20 flex items-center justify-center">
-                <span className="text-[10px] font-bold">EMPTY</span>
-              </div>
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 80,
+              border: `1px dashed rgba(255,255,255,0.06)`,
+              borderRadius: 6,
+              margin: '4px 0',
+            }}>
+              <span style={{ fontSize: 9, color: '#333', letterSpacing: '0.2em', fontWeight: 700 }}>
+                EMPTY
+              </span>
             </div>
           )}
         </div>
