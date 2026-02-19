@@ -75,6 +75,12 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
+  const [tags, setTags] = useState<string[]>(task.tags || []);
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>(task.tags || []);
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>(task.tags || []);
+  const [tagInput, setTagInput] = useState('');
   const [comments, setComments] = useState<Comment[]>(task.comments || []);
   const [attachments, setAttachments] = useState<Attachment[]>(task.attachments || []);
   const [newComment, setNewComment] = useState('');
@@ -95,7 +101,7 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
       const res = await fetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, priority: task.priority, tags: task.tags, dueDate: task.dueDate }),
+        body: JSON.stringify({ title, description, priority: task.priority, tags, dueDate: task.dueDate }),
       });
       if (res.ok) { onTaskUpdated(await res.json()); setIsEditing(false); }
     } catch (e) { console.error(e); }
@@ -229,6 +235,22 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
                     borderRadius: 8, padding: 16, color: '#ccc', width: '100%', minHeight: 200,
                     outline: 'none', resize: 'vertical', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7,
                   }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: '#555', letterSpacing: '0.2em', fontWeight: 900, marginBottom: 8 }}>TAGS</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '8px 12px', minHeight: 40 }}>
+                    {tags.map(tag => (
+                      <span key={tag} style={{ fontSize: 10, fontWeight: 700, color: '#4488ff', background: 'rgba(68,136,255,0.1)', border: '1px solid rgba(68,136,255,0.3)', borderRadius: 4, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        #{tag}
+                        <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4488ff', padding: 0, fontSize: 11 }}>×</button>
+                      </span>
+                    ))}
+                    <input value={tagInput} onChange={e => setTagInput(e.target.value)}
+                      onKeyDown={e => { if (['Enter',' ',','].includes(e.key)) { e.preventDefault(); const t = tagInput.trim().toLowerCase().replace(/^#/,''); if(t && !tags.includes(t)) setTags([...tags,t]); setTagInput(''); }}}
+                      onBlur={() => { const t = tagInput.trim().toLowerCase().replace(/^#/,''); if(t && !tags.includes(t)) setTags([...tags,t]); setTagInput(''); }}
+                      placeholder={tags.length===0 ? '輸入 tag，Enter 確認' : ''}
+                      style={{ background: 'none', border: 'none', outline: 'none', color: '#ccc', fontSize: 12, fontFamily: 'inherit', minWidth: 100, flex: 1 }} />
+                  </div>
                 </div>
                 <button onClick={handleSave} disabled={isLoading} style={{
                   background: '#4488ff', border: 'none', borderRadius: 6, padding: '10px 24px',
