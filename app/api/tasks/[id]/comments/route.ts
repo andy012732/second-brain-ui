@@ -34,9 +34,11 @@ export async function POST(
     };
 
     tasks[taskIndex].comments.push(newComment);
+    tasks[taskIndex].updatedAt = new Date().toISOString();
     await saveTasks(tasks);
 
-    return NextResponse.json(newComment, { status: 201, headers: corsHeaders() });
+    // ✅ 回傳完整 task（Modal 需要更新整個 task 狀態）
+    return NextResponse.json(tasks[taskIndex], { status: 201, headers: corsHeaders() });
   } catch (error) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
