@@ -7,7 +7,7 @@ const DATABASE_ID = "19e7d8d2d12980a69bcdd8f03014635e";
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!NOTION_TOKEN) return NextResponse.json({ error: 'Token Missing' }, { status: 401 });
+  if (!NOTION_TOKEN) return NextResponse.json({ error: 'Tactical Error: Token Missing' }, { status: 401 });
 
   try {
     const response = await axios.post(
@@ -25,24 +25,21 @@ export async function GET() {
       }
     );
 
-    // 1. 取得 Notion 實體門市數據
-    const notionData = response.data.results.map((page: any) => ({
-      id: page.id,
-      store: page.properties.門市.multi_select[0]?.name || '未知',
-      date: page.properties.營業日期.date?.start || '無日期',
-      total: page.properties.當日營業額.formula.number || 0
-    }));
+    // 🚀 歐文的精準解析：對齊 Notion 實體欄位
+    const data = response.data.results.map((page: any) => {
+      const p = page.properties;
+      return {
+        id: page.id,
+        store: p.門市.multi_select[0]?.name || '總部',
+        date: p.營業日期.date?.start || '無日期',
+        // 抓取當日營業額這個 Formula 欄位
+        total: p.當日營業額.formula.number || 0,
+        cash: p.現金.number || 0
+      };
+    });
 
-    // 2. 🚀 新增：官網業績佔位符 (學長！這裡我先用模擬數據，之後我幫您接官網 API 喔！)
-    const websiteData = {
-      id: "web-001",
-      store: "官網",
-      date: new Date().toISOString().split('T')[0],
-      total: 12500 // 先幫學長隨機預設一個數字
-    };
-
-    return NextResponse.json([...notionData, websiteData]);
+    return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: 'Sync Failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Intel Link Failed' }, { status: 500 });
   }
 }
