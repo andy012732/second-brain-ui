@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 }
@@ -19,12 +19,7 @@ export async function POST(
     const body = await request.json();
     const { content, parentId } = body;
 
-    const tasks = await getTasks();
-    const taskIndex = tasks.findIndex(task => task.id === id);
-    
-    if (taskIndex === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-    const newComment: Comment = {
+    const comment: Comment = {
       id: uuidv4(),
       taskId: id,
       content: content.trim(),
@@ -33,13 +28,12 @@ export async function POST(
       updatedAt: new Date().toISOString(),
     };
 
-    tasks[taskIndex].comments.push(newComment);
-    tasks[taskIndex].updatedAt = new Date().toISOString();
-    await saveTasks(tasks);
+    const updatedTask = await addComment(id, comment);
+    if (!updatedTask) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // ✅ 回傳完整 task（Modal 需要更新整個 task 狀態）
-    return NextResponse.json(tasks[taskIndex], { status: 201, headers: corsHeaders() });
+    return NextResponse.json(updatedTask, { status: 201, headers: corsHeaders() });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }
@@ -49,8 +43,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const tasks = await getTasks();
-  const task = tasks.find(task => task.id === id);
+  const task = await getTaskById(id);
   return NextResponse.json(task ? task.comments : [], { headers: corsHeaders() });
 }
 
