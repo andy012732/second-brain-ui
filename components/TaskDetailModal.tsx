@@ -77,8 +77,6 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
   const [description, setDescription] = useState(task.description || '');
   const [tags, setTags] = useState<string[]>(task.tags || []);
   const [tagInput, setTagInput] = useState('');
-  const [tags, setTags] = useState<string[]>(task.tags || []);
-  const [tagInput, setTagInput] = useState('');
   const [comments, setComments] = useState<Comment[]>(task.comments || []);
   const [attachments, setAttachments] = useState<Attachment[]>(task.attachments || []);
   const [newComment, setNewComment] = useState('');
