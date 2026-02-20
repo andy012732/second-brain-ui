@@ -53,13 +53,10 @@ export async function GET() {
     const monthStart = `${today.slice(0, 7)}-01`;
 
     // 抓本月所有資料
-    const rows = await queryNotion({
-      filter: {
-        property: '營業日期',
-        date: { on_or_after: monthStart }
-      },
-      sorts: [{ property: '營業日期', direction: 'descending' }]
-    });
+    const rows = await queryNotion(
+      { property: '營業日期', date: { on_or_after: monthStart } },
+      [{ property: '營業日期', direction: 'descending' }]
+    );
 
     // 整理資料
     const stores = ['新豐', '竹北'];
