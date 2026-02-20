@@ -1,9 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-const fmt = (n: number) => n >= 10000
-  ? `$${n.toLocaleString()}`
-  : `$${n.toLocaleString()}`;
+const fmt = (n: number) => `$${n.toLocaleString()}`;
 
 const pctColor = (pct: number | null) => {
   if (pct === null) return '#888';
@@ -28,9 +26,10 @@ export default function RevenuePage() {
   const [onlineDate, setOnlineDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
 
-  // 業績日期邏輯（台灣時間 UTC+8）
-  // < 20:00 → 顯示昨天（昨日業績保留期）
-  // >= 20:00 → 顯示今天
+  // 歷史查詢
+  const [historyDate, setHistoryDate] = useState('');
+  const [historyResult, setHistoryResult] = useState<any>(null);
+
   const getTWDate = (offsetDays = 0) => {
     const now = new Date();
     const tw = new Date(now.getTime() + 8 * 60 * 60 * 1000 + offsetDays * 86400000);
@@ -41,19 +40,17 @@ export default function RevenuePage() {
     const twHour = (now.getUTCHours() + 8) % 24;
     return twHour < 20 ? getTWDate(-1) : getTWDate(0);
   };
-  // 今日快照的狀態判斷
   const getStoreStatus = (store: string, hasData: boolean) => {
     const now = new Date();
     const twHour = (now.getUTCHours() + 8) % 24;
     const twMin = now.getUTCMinutes();
     const totalMin = twHour * 60 + twMin;
-    if (twHour < 20) return 'yesterday'; // 保留昨日
-    if (!hasData && totalMin < 23 * 60) return 'waiting'; // 等待上傳
-    if (!hasData) return 'missing'; // 超過23:00未上傳
+    if (twHour < 20) return 'yesterday';
+    if (!hasData && totalMin < 23 * 60) return 'waiting';
+    if (!hasData) return 'missing';
     return 'ok';
   };
 
-  // 輪詢狀態
   const [isPolling, setIsPolling] = useState(false);
   const [lastFetch, setLastFetch] = useState<string | null>(null);
   const [manualLoading, setManualLoading] = useState(false);
@@ -73,14 +70,12 @@ export default function RevenuePage() {
 
   useEffect(() => { load(); }, []);
 
-  // 21:20 ~ 23:00 每10分鐘自動輪詢
   useEffect(() => {
     const checkAndPoll = () => {
       const now = new Date();
       const hour = now.getHours();
       const min = now.getMinutes();
       const totalMin = hour * 60 + min;
-      // 21:20 = 1280, 23:00 = 1380
       if (totalMin >= 1280 && totalMin < 1380) {
         setIsPolling(true);
         load();
@@ -115,6 +110,12 @@ export default function RevenuePage() {
     await load();
     setOnlineInput('');
     setSaving(false);
+  };
+
+  const queryHistory = () => {
+    if (!historyDate || !data) return;
+    const dayData = data.dailyMap[historyDate];
+    setHistoryResult({ date: historyDate, stores: dayData || null });
   };
 
   if (!data || !goals) return (
@@ -198,7 +199,7 @@ export default function RevenuePage() {
         </div>
       </div>
 
-      {/* 本月累積 vs 目標 */}
+      {/* 本月累積 vs 目標 + 同期比較 */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ fontSize: 10, color: '#ffaa00', letterSpacing: '0.3em' }}>// MONTHLY PROGRESS</div>
@@ -226,11 +227,25 @@ export default function RevenuePage() {
             const goal = goals[store] || 1;
             const pct = Math.min(100, Math.round((actual / goal) * 100));
             const color = STORE_COLORS[store];
+            const lastSame = data.lastMonthSamePeriod?.[store] ?? null;
+            const lastTotal = data.lastMonthTotal?.[store] ?? null;
+            const vsLastSame = (lastSame !== null && lastSame > 0 && store !== '官網')
+              ? Math.round(((actual - lastSame) / lastSame) * 100)
+              : null;
             return (
               <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ fontSize: 11, color, fontWeight: 700 }}>{store}</span>
-                  <span style={{ fontSize: 11, color: '#888' }}>{fmt(actual)} / {fmt(goal)} <span style={{ color: pct >= 100 ? '#00ff88' : pct >= monthProgress ? '#ffaa00' : '#ff2244', fontWeight: 700 }}>{pct}%</span></span>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 11, color: '#888' }}>{fmt(actual)} / {fmt(goal)} <span style={{ color: pct >= 100 ? '#00ff88' : pct >= monthProgress ? '#ffaa00' : '#ff2244', fontWeight: 700 }}>{pct}%</span></span>
+                    {vsLastSame !== null && (
+                      <div style={{ fontSize: 10, color: vsLastSame >= 0 ? '#00ff88' : '#ff2244', marginTop: 3 }}>
+                        vs 上月同期 {vsLastSame >= 0 ? '▲' : '▼'}{Math.abs(vsLastSame)}%
+                        <span style={{ color: '#444', marginLeft: 6 }}>{fmt(lastSame!)}</span>
+                        {lastTotal !== null && <span style={{ color: '#333', marginLeft: 6 }}>/ 上月全月 {fmt(lastTotal)}</span>}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
@@ -243,10 +258,57 @@ export default function RevenuePage() {
         </div>
       </div>
 
+      {/* 歷史業績查詢 */}
+      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '20px 24px', marginBottom: 28 }}>
+        <div style={{ fontSize: 10, color: '#ffaa00', letterSpacing: '0.3em', marginBottom: 16 }}>// HISTORY LOOKUP</div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+          <div>
+            <div style={{ fontSize: 9, color: '#888', marginBottom: 6 }}>查詢日期</div>
+            <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '8px 12px', color: '#fff', fontSize: 12, fontFamily: 'inherit', outline: 'none', colorScheme: 'dark' }} />
+          </div>
+          <button onClick={queryHistory}
+            style={{ background: '#ffaa00', border: 'none', borderRadius: 4, padding: '8px 20px', color: '#000', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.1em', fontWeight: 700 }}>
+            SEARCH
+          </button>
+        </div>
+        {historyResult && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 10, color: '#555', marginBottom: 10 }}>{historyResult.date} 業績明細</div>
+            {historyResult.stores === null ? (
+              <div style={{ color: '#ff2244', fontSize: 12 }}>⚠ 此日期無資料（不在本月範圍內或未上傳）</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                {['新豐', '竹北'].map(store => {
+                  const d = historyResult.stores[store];
+                  if (!d) return (
+                    <div key={store} style={{ background: 'rgba(255,34,68,0.05)', border: '1px solid rgba(255,34,68,0.15)', borderRadius: 8, padding: '14px 18px' }}>
+                      <div style={{ fontSize: 10, color: STORE_COLORS[store], marginBottom: 6, fontWeight: 700 }}>{store}</div>
+                      <div style={{ color: '#ff2244', fontSize: 11 }}>未上傳</div>
+                    </div>
+                  );
+                  return (
+                    <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(255,255,255,0.08)`, borderLeft: `3px solid ${STORE_COLORS[store]}`, borderRadius: 8, padding: '14px 18px' }}>
+                      <div style={{ fontSize: 10, color: STORE_COLORS[store], marginBottom: 8, fontWeight: 700 }}>{store}</div>
+                      <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 10 }}>{fmt(d.revenue)}</div>
+                      <div style={{ display: 'flex', gap: 16, fontSize: 10, color: '#666' }}>
+                        <span>現金 <span style={{ color: '#00ff88' }}>{fmt(d.現金)}</span></span>
+                        <span>刷卡 <span style={{ color: '#4488ff' }}>{fmt(d.刷卡)}</span></span>
+                        <span>LINEPAY <span style={{ color: '#00ccff' }}>{fmt(d.LINEPAY)}</span></span>
+                        <span>匯款 <span style={{ color: '#ffaa00' }}>{fmt(d.匯款)}</span></span>
+                      </div>
+                      {d.其他支出 > 0 && <div style={{ fontSize: 10, color: '#ff6666', marginTop: 6 }}>其他支出 -{fmt(d.其他支出)}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* 付款方式 + 缺報 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }}>
-
-        {/* 付款方式分佈 */}
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px' }}>
           <div style={{ fontSize: 10, color: '#ffaa00', letterSpacing: '0.3em', marginBottom: 16 }}>// PAYMENT MIX (本月)</div>
           {payTotal === 0 ? <div style={{ color: '#444', fontSize: 12 }}>尚無資料</div> : (
@@ -269,8 +331,6 @@ export default function RevenuePage() {
             </div>
           )}
         </div>
-
-        {/* 缺報警示 */}
         <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px' }}>
           <div style={{ fontSize: 10, color: '#ffaa00', letterSpacing: '0.3em', marginBottom: 16 }}>// MISSING REPORTS</div>
           {data.missingDates.length === 0 ? (
