@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
+import axios from 'axios';
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const DB_ID = '19e7d8d2d12980a69bcdd8f03014635e';
 
 async function queryNotion(filter?: object, sorts?: object[]) {
-  const axios = (await import('axios')).default;
   const res = await axios.post(
     `https://api.notion.com/v1/databases/${DB_ID}/query`,
     { filter, sorts, page_size: 100 },
@@ -16,6 +16,7 @@ async function queryNotion(filter?: object, sorts?: object[]) {
       }
     }
   );
+  if (!res.data.results) console.error('Notion 400:', JSON.stringify(res.data));
   return res.data.results || [];
 }
 
