@@ -57,6 +57,9 @@ export async function GET() {
       sorts: [{ property: '營業日期', direction: 'descending' }]
     });
 
+    if (debug) {
+      return NextResponse.json({ rowCount: rows.length, sample: rows.slice(0, 2) });
+    }
     // 整理資料
     const stores = ['新豐', '竹北'];
     const todayData: Record<string, any> = {};
