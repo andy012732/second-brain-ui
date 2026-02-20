@@ -41,6 +41,8 @@ function calcRevenue(props: any): number {
 
 export async function GET() {
   try {
+    const tokenCheck = NOTION_TOKEN ? NOTION_TOKEN.slice(0,8) + '...' : 'MISSING';
+    if (!NOTION_TOKEN) return NextResponse.json({ error: 'NO_TOKEN', tokenCheck });
     // 台灣時間 UTC+8
     const now = new Date();
     const twNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
