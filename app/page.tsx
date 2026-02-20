@@ -10,30 +10,59 @@ const TICKER_ITEMS = [
 ];
 
 export default function MissionControl() {
-  const GOAL = 80000;
-  const { data: acts = [], isLoading: aL } = useSWR('/api/activity', fetcher, { refreshInterval: 10000 });
-  const { data: rev = [], isLoading: rL }  = useSWR('/api/notion/revenue', fetcher, { refreshInterval: 300000 });
+  const now = new Date();
+  const twHour = (now.getUTCHours() + 8) % 24;
+  const monthStr = new Date(now.getTime() + 8*3600000).toISOString().slice(0,7);
 
-  const today = new Date().toISOString().split('T')[0];
-  const td    = Array.isArray(rev) ? rev.filter((r: any) => r.date === today) : [];
-  const hf    = td.filter((r: any) => r.store === '新豐').reduce((s: number, r: any) => s + r.total, 0);
-  const zb    = td.filter((r: any) => r.store === '竹北').reduce((s: number, r: any) => s + r.total, 0);
-  const web   = td.filter((r: any) => r.store === '官網').reduce((s: number, r: any) => s + r.total, 0);
+  const { data: rev, isLoading: rL }       = useSWR('/api/revenue', fetcher, { refreshInterval: 300000 });
+  const { data: goals }                     = useSWR('/api/revenue/goals', fetcher, { refreshInterval: 600000 });
+  const { data: onlineList = [] }           = useSWR(`/api/revenue/online?month=${monthStr}`, fetcher, { refreshInterval: 300000 });
+  const { data: acts = [], isLoading: aL }  = useSWR('/api/activity', fetcher, { refreshInterval: 10000 });
+
+  // 業績數字（20:00前顯示昨日）
+  const getStoreAmt = (store: string) => {
+    const d = twHour < 20 ? rev?.yesterdayData?.[store] : rev?.todayData?.[store];
+    return d?.revenue || 0;
+  };
+  const hf  = getStoreAmt('新豐');
+  const zb  = getStoreAmt('竹北');
+
+  // 官網取當日數字
+  const revDate = (() => {
+    const d = new Date(now.getTime() + 8*3600000 - (twHour < 20 ? 86400000 : 0));
+    return d.toISOString().split('T')[0];
+  })();
+  const web = Array.isArray(onlineList)
+    ? (onlineList.find((r: any) => r.date === revDate)?.amount || 0)
+    : 0;
+
   const total = hf + zb + web;
-  const pct   = Math.min(Math.round((total / GOAL) * 100), 100);
+
+  // 目標（從 goals API）
+  const goalXF  = goals?.['新豐']  || 1;
+  const goalZB  = goals?.['竹北']  || 1;
+  const goalWeb = goals?.['官網']  || 1;
+  const GOAL = goalXF + goalZB + goalWeb;
+  const pct = Math.min(Math.round((total / GOAL) * 100), 100);
+  const pctColor = pct >= 100 ? '#00ff88' : pct > 60 ? '#00f5ff' : '#1a3045';
+
+  // 月累積
+  const monthXF  = rev?.monthTotal?.['新豐']  || 0;
+  const monthZB  = rev?.monthTotal?.['竹北']  || 0;
+  const monthWeb = Array.isArray(onlineList) ? onlineList.reduce((s: number, r: any) => s + r.amount, 0) : 0;
+  const monthTotal = monthXF + monthZB + monthWeb;
+  const monthPct = Math.min(Math.round((monthTotal / GOAL) * 100), 100);
 
   const stores = [
-    { name: '新豐門市', val: hf,  pct: Math.min((hf  / GOAL) * 100, 100), color: '#00f5ff', shadow: 'rgba(0,245,255,0.5)' },
-    { name: '竹北門市', val: zb,  pct: Math.min((zb  / GOAL) * 100, 100), color: '#ff006e', shadow: 'rgba(255,0,110,0.5)' },
-    { name: '官網業績', val: web, pct: Math.min((web / GOAL) * 100, 100), color: '#00ff88', shadow: 'rgba(0,255,136,0.5)' },
+    { name: '新豐門市', val: hf,  monthVal: monthXF,  goal: goalXF,  color: '#00f5ff', shadow: 'rgba(0,245,255,0.5)' },
+    { name: '竹北門市', val: zb,  monthVal: monthZB,  goal: goalZB,  color: '#ff006e', shadow: 'rgba(255,0,110,0.5)' },
+    { name: '官網業績', val: web, monthVal: monthWeb, goal: goalWeb, color: '#00ff88', shadow: 'rgba(0,255,136,0.5)' },
   ];
-
-  const pctColor = pct >= 100 ? '#00ff88' : pct > 60 ? '#00f5ff' : '#1a3045';
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#010208', position: 'relative', zIndex: 1 }}>
 
-      {/* ── TICKER ── */}
+      {/* TICKER */}
       <div style={{ height: 22, flexShrink: 0, overflow: 'hidden', background: '#030a12', borderBottom: '1px solid rgba(0,245,255,0.06)', display: 'flex', alignItems: 'center' }}>
         <div className="ticker-scroll" style={{ display: 'flex', gap: 40, whiteSpace: 'nowrap', paddingLeft: '100vw', fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 3, color: '#1a3045' }}>
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((t, i) => (
@@ -42,15 +71,13 @@ export default function MissionControl() {
         </div>
       </div>
 
-      {/* ── MAIN 3-COL ── */}
+      {/* 3-COL */}
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '260px 1fr 260px', overflow: 'hidden', minHeight: 0 }}>
 
-        {/* LEFT: Intel feed */}
+        {/* LEFT */}
         <aside style={{ display: 'flex', flexDirection: 'column', padding: '14px 12px', overflow: 'hidden', borderRight: '1px solid rgba(0,245,255,0.07)' }}>
           <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: '#1a3045', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexShrink: 0 }}>
-            <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="#00f5ff" strokeWidth={2}>
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-            </svg>
+            <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="#00f5ff" strokeWidth={2}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             即時情資流
             {aL && <span style={{ marginLeft: 'auto', color: '#00f5ff', fontSize: 8 }}>...</span>}
           </div>
@@ -72,71 +99,61 @@ export default function MissionControl() {
 
         {/* CENTER */}
         <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 32px', gap: 16, overflow: 'hidden' }}>
-
-          {/* Revenue panel */}
           <div className="fiu" style={{ width: '100%', background: '#0d1c30', border: '1px solid rgba(0,245,255,0.14)', padding: '22px 26px', position: 'relative' }}>
-            {/* Corner brackets */}
-            {[
-              { top: 0, left: 0, borderWidth: '2px 0 0 2px' },
-              { top: 0, right: 0, borderWidth: '2px 2px 0 0' },
-              { bottom: 0, left: 0, borderWidth: '0 0 2px 2px' },
-              { bottom: 0, right: 0, borderWidth: '0 2px 2px 0' },
-            ].map((s, i) => (
+            {[{ top: 0, left: 0, borderWidth: '2px 0 0 2px' }, { top: 0, right: 0, borderWidth: '2px 2px 0 0' }, { bottom: 0, left: 0, borderWidth: '0 0 2px 2px' }, { bottom: 0, right: 0, borderWidth: '0 2px 2px 0' }].map((s, i) => (
               <span key={i} style={{ position: 'absolute', width: 14, height: 14, borderStyle: 'solid', borderColor: 'rgba(0,245,255,0.5)', ...s }}/>
             ))}
-
-            {/* Numbers row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, fontWeight: 700, letterSpacing: 4, textTransform: 'uppercase', color: 'rgba(0,245,255,0.45)', marginBottom: 8 }}>
-                  德谷拉騎士 // 今日營收監測
+                  德谷拉騎士 // {twHour < 20 ? '昨日' : '今日'}營收監測
                 </div>
                 <div style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: 38, lineHeight: 1, color: '#00f5ff', textShadow: '0 0 28px rgba(0,245,255,0.45)' }}>
-                  ${total.toLocaleString()}
+                  {rL ? '—' : `$${total.toLocaleString()}`}
                 </div>
                 <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 10, color: '#2a4a5a', marginTop: 4 }}>
-                  目標 / $80,000
+                  日目標 / ${GOAL.toLocaleString()} · 月累積 ${monthTotal.toLocaleString()} ({monthPct}%)
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontFamily: 'Orbitron, monospace', fontWeight: 900, fontSize: 56, lineHeight: 1, color: pctColor, textShadow: pct > 0 ? '0 0 36px rgba(0,245,255,0.35)' : 'none' }}>
-                  {pct}
+                  {rL ? '...' : pct}
                 </div>
-                <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 3, color: '#1a3045', textAlign: 'right' }}>
-                  %  COMPLETE
-                </div>
+                <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 3, color: '#1a3045', textAlign: 'right' }}>%  COMPLETE</div>
               </div>
             </div>
-
-            {/* 3-color progress bar */}
             <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,245,255,0.08)', display: 'flex', overflow: 'hidden', marginBottom: 6 }}>
-              <div className="prog-fill" style={{ width: `${Math.min((hf / GOAL) * 100, 100)}%`, background: '#00f5ff', boxShadow: '0 0 14px rgba(0,245,255,0.7)' }}/>
-              <div className="prog-fill" style={{ width: `${Math.min((zb / GOAL) * 100, 100)}%`, background: '#ff006e', boxShadow: '0 0 14px rgba(255,0,110,0.7)' }}/>
-              <div className="prog-fill" style={{ width: `${Math.min((web / GOAL) * 100, 100)}%`, background: '#00ff88', boxShadow: '0 0 14px rgba(0,255,136,0.7)' }}/>
+              <div className="prog-fill" style={{ width: `${Math.min((hf/GOAL)*100,100)}%`, background: '#00f5ff', boxShadow: '0 0 14px rgba(0,245,255,0.7)' }}/>
+              <div className="prog-fill" style={{ width: `${Math.min((zb/GOAL)*100,100)}%`, background: '#ff006e', boxShadow: '0 0 14px rgba(255,0,110,0.7)' }}/>
+              <div className="prog-fill" style={{ width: `${Math.min((web/GOAL)*100,100)}%`, background: '#00ff88', boxShadow: '0 0 14px rgba(0,255,136,0.7)' }}/>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              {['$0', '$20K', '$40K', '$60K', '$80K'].map(l => (
+              {['$0', `$${Math.round(GOAL*0.25/1000)}K`, `$${Math.round(GOAL*0.5/1000)}K`, `$${Math.round(GOAL*0.75/1000)}K`, `$${Math.round(GOAL/1000)}K`].map(l => (
                 <span key={l} style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, color: '#1a3045' }}>{l}</span>
               ))}
             </div>
           </div>
 
-          {/* Store KPI cards */}
           <div className="fiu1" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, width: '100%' }}>
-            {stores.map(s => (
-              <div key={s.name} style={{ background: '#091422', border: '1px solid rgba(0,245,255,0.08)', borderLeft: `2px solid ${s.color}`, padding: '12px 14px' }}>
-                <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: '#1a3045', marginBottom: 6 }}>{s.name}</div>
-                <div style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: 20, lineHeight: 1, color: s.color, textShadow: `0 0 14px ${s.shadow}` }}>
-                  ${s.val.toLocaleString()}
+            {stores.map(s => {
+              const mp = Math.min(Math.round((s.monthVal/(s.goal||1))*100),100);
+              return (
+                <div key={s.name} style={{ background: '#091422', border: '1px solid rgba(0,245,255,0.08)', borderLeft: `2px solid ${s.color}`, padding: '12px 14px' }}>
+                  <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, letterSpacing: 2, textTransform: 'uppercase', color: '#1a3045', marginBottom: 6 }}>{s.name}</div>
+                  <div style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: 20, lineHeight: 1, color: s.color, textShadow: `0 0 14px ${s.shadow}` }}>
+                    {rL ? '—' : `$${s.val.toLocaleString()}`}
+                  </div>
+                  <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, color: '#2a4a5a', marginTop: 4 }}>
+                    月 ${s.monthVal.toLocaleString()} / {mp}%
+                  </div>
+                  <div style={{ marginTop: 6, height: 2, background: 'rgba(255,255,255,0.05)' }}>
+                    <div className="prog-fill" style={{ width: `${mp}%`, height: '100%', background: s.color, boxShadow: `0 0 6px ${s.color}` }}/>
+                  </div>
                 </div>
-                <div style={{ marginTop: 8, height: 2, background: 'rgba(255,255,255,0.05)' }}>
-                  <div className="prog-fill" style={{ width: `${s.pct}%`, height: '100%', background: s.color, boxShadow: `0 0 6px ${s.color}` }}/>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Command input */}
           <div className="fiu2" style={{ width: '100%', background: '#050e1a', border: '1px solid rgba(0,245,255,0.11)', display: 'flex', alignItems: 'center', padding: '0 14px' }}>
             <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: 'rgba(0,245,255,0.35)', marginRight: 8, flexShrink: 0 }}>▶</span>
             <input type="text" placeholder="輸入指令或關鍵字..."
@@ -144,34 +161,39 @@ export default function MissionControl() {
           </div>
         </section>
 
-        {/* RIGHT: Revenue list */}
+        {/* RIGHT */}
         <aside style={{ display: 'flex', flexDirection: 'column', padding: '14px 12px', overflow: 'hidden', borderLeft: '1px solid rgba(0,245,255,0.07)' }}>
           <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: '#1a3045', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexShrink: 0 }}>
-            <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="#00ff88" strokeWidth={2}>
-              <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
-            </svg>
+            <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="#00ff88" strokeWidth={2}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
             門市分項業績
             {rL && <span style={{ marginLeft: 'auto', color: '#00ff88', fontSize: 8 }}>...</span>}
           </div>
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0 }}>
-            {Array.isArray(rev) && (rev as any[]).slice(0, 15).map((r: any, i: number) => (
-              <div key={r.id ?? i} className="rev-row fiu" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'rgba(9,20,34,0.9)', border: '1px solid rgba(0,245,255,0.06)', transition: 'border-color 0.15s' }}>
-                <div>
-                  <span style={{ display: 'block', fontFamily: 'Share Tech Mono, monospace', fontSize: 7, color: '#1a3045', marginBottom: 1 }}>{r.date}</span>
-                  <span style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 600, fontSize: 13, color: '#e4f4ff' }}>{r.store}</span>
+            {rev?.dailyMap && Object.entries(rev.dailyMap as Record<string, Record<string, number>>)
+              .sort((a, b) => b[0].localeCompare(a[0]))
+              .slice(0, 8)
+              .flatMap(([date, storeMap]) =>
+                Object.entries(storeMap).map(([store, amount]) => ({ date, store, amount }))
+              )
+              .map((r, i) => (
+                <div key={i} className="rev-row fiu" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'rgba(9,20,34,0.9)', border: '1px solid rgba(0,245,255,0.06)' }}>
+                  <div>
+                    <span style={{ display: 'block', fontFamily: 'Share Tech Mono, monospace', fontSize: 7, color: '#1a3045', marginBottom: 1 }}>{r.date}</span>
+                    <span style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 600, fontSize: 13, color: '#e4f4ff' }}>{r.store}</span>
+                  </div>
+                  <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: 12, color: '#00ff88', textShadow: '0 0 10px rgba(0,255,136,0.4)' }}>${(r.amount as number).toLocaleString()}</span>
                 </div>
-                <span style={{ fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: 12, color: '#00ff88', textShadow: '0 0 10px rgba(0,255,136,0.4)' }}>${r.total.toLocaleString()}</span>
-              </div>
-            ))}
-            {!rL && Array.isArray(rev) && (rev as any[]).length === 0 && (
-              <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, color: '#1a2a35', textAlign: 'center', marginTop: 40, letterSpacing: 2 }}>// AWAITING NOTION</div>
+              ))
+            }
+            {!rL && !rev?.dailyMap && (
+              <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, color: '#1a2a35', textAlign: 'center', marginTop: 40, letterSpacing: 2 }}>// AWAITING DATA</div>
             )}
           </div>
         </aside>
 
       </div>
 
-      {/* ── STATUS BAR ── */}
+      {/* STATUS BAR */}
       <div style={{ height: 22, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', background: '#030a12', borderTop: '1px solid rgba(0,245,255,0.06)' }}>
         <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, letterSpacing: 3, textTransform: 'uppercase', color: '#1a3045' }}>DRACULA COMMAND EST.2026 // ADAPTIVE MODE</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
