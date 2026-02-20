@@ -15,6 +15,7 @@ async function queryNotion(filter?: object, sorts?: object[]) {
     cache: 'no-store',
   });
   const data = await res.json();
+  if (!data.results) console.error("Notion error:", JSON.stringify(data));
   return data.results || [];
 }
 
