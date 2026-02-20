@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 
 const fmt = (n: number) => n >= 10000
-  ? `$${(n / 10000).toFixed(1)}萬`
+  ? `$${n.toLocaleString()}`
   : `$${n.toLocaleString()}`;
 
 const pctColor = (pct: number | null) => {
