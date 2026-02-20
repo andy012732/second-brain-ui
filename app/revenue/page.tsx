@@ -66,7 +66,7 @@ export default function RevenuePage() {
     ]);
     setData(r);
     setGoals(g);
-    setGoalInput({ 新豐: String(g.新豐), 竹北: String(g.竹北), 官網: String(g.官網) });
+    if (g && g.新豐 !== undefined) setGoalInput({ 新豐: String(g.新豐), 竹北: String(g.竹北), 官網: String(g.官網) });
     setOnlineList(o);
     setLastFetch(new Date().toLocaleTimeString('zh-TW'));
   };

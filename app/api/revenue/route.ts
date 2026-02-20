@@ -7,7 +7,7 @@ const DB_ID = '19e7d8d2d12980a69bcdd8f03014635e';
 async function queryNotion(filter?: object, sorts?: object[]) {
   const res = await axios.post(
     `https://api.notion.com/v1/databases/${DB_ID}/query`,
-    { ...(filter ? { filter } : {}), ...(sorts ? { sorts } : {}), page_size: 100 },
+    Object.assign({ page_size: 100 }, filter ? { filter } : {}, sorts ? { sorts } : {}),
     {
       headers: {
         'Authorization': `Bearer ${NOTION_TOKEN}`,
