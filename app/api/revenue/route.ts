@@ -4,19 +4,19 @@ const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const DB_ID = '19e7d8d2d12980a69bcdd8f03014635e';
 
 async function queryNotion(filter?: object, sorts?: object[]) {
-  const res = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${NOTION_TOKEN}`,
-      'Notion-Version': '2022-06-28',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ filter, sorts, page_size: 100 }),
-    cache: 'no-store',
-  });
-  const data = await res.json();
-  if (!data.results) console.error("Notion error:", JSON.stringify(data));
-  return data.results || [];
+  const axios = (await import('axios')).default;
+  const res = await axios.post(
+    `https://api.notion.com/v1/databases/${DB_ID}/query`,
+    { filter, sorts, page_size: 100 },
+    {
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json',
+      }
+    }
+  );
+  return res.data.results || [];
 }
 
 function getNum(props: any, key: string): number {
