@@ -28,7 +28,10 @@ export default function RevenuePage() {
 
   // 歷史查詢
   const [historyDate, setHistoryDate] = useState('');
+  const [historyMonth, setHistoryMonth] = useState('');
+  const [historyMode, setHistoryMode] = useState<'date'|'month'>('date');
   const [historyResult, setHistoryResult] = useState<any>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const getTWDate = (offsetDays = 0) => {
     const now = new Date();
@@ -112,10 +115,26 @@ export default function RevenuePage() {
     setSaving(false);
   };
 
-  const queryHistory = () => {
-    if (!historyDate || !data) return;
-    const dayData = data.dailyMap[historyDate];
-    setHistoryResult({ date: historyDate, stores: dayData || null });
+  const queryHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryResult(null);
+    try {
+      if (historyMode === 'date') {
+        // 先查本月 dailyMap，找不到才打 history API
+        if (data && data.dailyMap[historyDate] !== undefined) {
+          setHistoryResult({ mode: 'date', date: historyDate, stores: data.dailyMap[historyDate] });
+        } else {
+          const res = await fetch(`/api/revenue/history?date=${historyDate}`).then(r => r.json());
+          const dayData = res.dailyMap?.[historyDate] || null;
+          setHistoryResult({ mode: 'date', date: historyDate, stores: dayData });
+        }
+      } else {
+        const res = await fetch(`/api/revenue/history?month=${historyMonth}`).then(r => r.json());
+        setHistoryResult({ mode: 'month', month: historyMonth, dailyMap: res.dailyMap, monthTotal: res.monthTotal });
+      }
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   if (!data || !goals) return (
@@ -261,22 +280,41 @@ export default function RevenuePage() {
       {/* 歷史業績查詢 */}
       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, padding: '20px 24px', marginBottom: 28 }}>
         <div style={{ fontSize: 10, color: '#ffaa00', letterSpacing: '0.3em', marginBottom: 16 }}>// HISTORY LOOKUP</div>
+        {/* 模式切換 */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {(['date','month'] as const).map(m => (
+            <button key={m} onClick={() => { setHistoryMode(m); setHistoryResult(null); }}
+              style={{ background: historyMode === m ? '#ffaa00' : 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,170,0,0.3)', borderRadius: 4, padding: '4px 14px', color: historyMode === m ? '#000' : '#888', fontSize: 9, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, letterSpacing: '0.1em' }}>
+              {m === 'date' ? '單日查詢' : '整月查詢'}
+            </button>
+          ))}
+        </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-          <div>
-            <div style={{ fontSize: 9, color: '#888', marginBottom: 6 }}>查詢日期</div>
-            <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '8px 12px', color: '#fff', fontSize: 12, fontFamily: 'inherit', outline: 'none', colorScheme: 'dark' }} />
-          </div>
-          <button onClick={queryHistory}
-            style={{ background: '#ffaa00', border: 'none', borderRadius: 4, padding: '8px 20px', color: '#000', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.1em', fontWeight: 700 }}>
-            SEARCH
+          {historyMode === 'date' ? (
+            <div>
+              <div style={{ fontSize: 9, color: '#888', marginBottom: 6 }}>查詢日期</div>
+              <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)}
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '8px 12px', color: '#fff', fontSize: 12, fontFamily: 'inherit', outline: 'none', colorScheme: 'dark' }} />
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 9, color: '#888', marginBottom: 6 }}>查詢月份</div>
+              <input type="month" value={historyMonth} onChange={e => setHistoryMonth(e.target.value)}
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, padding: '8px 12px', color: '#fff', fontSize: 12, fontFamily: 'inherit', outline: 'none', colorScheme: 'dark' }} />
+            </div>
+          )}
+          <button onClick={queryHistory} disabled={historyLoading || (historyMode === 'date' ? !historyDate : !historyMonth)}
+            style={{ background: '#ffaa00', border: 'none', borderRadius: 4, padding: '8px 20px', color: '#000', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.1em', fontWeight: 700, opacity: (historyMode === 'date' ? !historyDate : !historyMonth) ? 0.4 : 1 }}>
+            {historyLoading ? '查詢中...' : 'SEARCH'}
           </button>
         </div>
-        {historyResult && (
+
+        {/* 單日結果 */}
+        {historyResult?.mode === 'date' && (
           <div style={{ marginTop: 16 }}>
             <div style={{ fontSize: 10, color: '#555', marginBottom: 10 }}>{historyResult.date} 業績明細</div>
             {historyResult.stores === null ? (
-              <div style={{ color: '#ff2244', fontSize: 12 }}>⚠ 此日期無資料（不在本月範圍內或未上傳）</div>
+              <div style={{ color: '#ff2244', fontSize: 12 }}>⚠ 此日期無資料（未上傳）</div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
                 {['新豐', '竹北'].map(store => {
@@ -288,7 +326,7 @@ export default function RevenuePage() {
                     </div>
                   );
                   return (
-                    <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(255,255,255,0.08)`, borderLeft: `3px solid ${STORE_COLORS[store]}`, borderRadius: 8, padding: '14px 18px' }}>
+                    <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderLeft: `3px solid ${STORE_COLORS[store]}`, borderRadius: 8, padding: '14px 18px' }}>
                       <div style={{ fontSize: 10, color: STORE_COLORS[store], marginBottom: 8, fontWeight: 700 }}>{store}</div>
                       <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 10 }}>{fmt(d.revenue)}</div>
                       <div style={{ display: 'flex', gap: 16, fontSize: 10, color: '#666' }}>
@@ -303,6 +341,32 @@ export default function RevenuePage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* 整月結果 */}
+        {historyResult?.mode === 'month' && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
+              {['新豐','竹北'].map(store => (
+                <div key={store} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(255,255,255,0.08)`, borderLeft: `3px solid ${STORE_COLORS[store]}`, borderRadius: 8, padding: '12px 18px', flex: 1 }}>
+                  <div style={{ fontSize: 9, color: STORE_COLORS[store], marginBottom: 4, fontWeight: 700 }}>{store} {historyResult.month} 月總計</div>
+                  <div style={{ fontSize: 20, fontWeight: 900 }}>{fmt(historyResult.monthTotal[store] || 0)}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {Object.entries(historyResult.dailyMap as Record<string, any>).sort(([a],[b]) => b.localeCompare(a)).map(([date, stores]) => (
+                <div key={date} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6, fontSize: 11 }}>
+                  <span style={{ color: '#555' }}>{date}</span>
+                  {['新豐','竹北'].map(store => (
+                    <span key={store} style={{ color: (stores as any)[store] ? STORE_COLORS[store] : '#333' }}>
+                      {(stores as any)[store] ? fmt((stores as any)[store].revenue) : '—'}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
