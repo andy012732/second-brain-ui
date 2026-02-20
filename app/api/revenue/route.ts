@@ -41,8 +41,8 @@ function calcRevenue(props: any): number {
 
 export async function GET() {
   try {
-    const tokenCheck = NOTION_TOKEN ? NOTION_TOKEN.slice(0,8) + '...' : 'MISSING';
-    if (!NOTION_TOKEN) return NextResponse.json({ error: 'NO_TOKEN', tokenCheck });
+    if (!NOTION_TOKEN) return NextResponse.json({ error: 'NO_TOKEN' });
+    const tokenHint = NOTION_TOKEN.slice(0,8);
     // 台灣時間 UTC+8
     const now = new Date();
     const twNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
@@ -59,9 +59,6 @@ export async function GET() {
       sorts: [{ property: '營業日期', direction: 'descending' }]
     });
 
-    if (debugMode) {
-      return NextResponse.json({ rowCount: rows.length, sample: rows.slice(0, 2) });
-    }
     // 整理資料
     const stores = ['新豐', '竹北'];
     const todayData: Record<string, any> = {};
