@@ -166,8 +166,8 @@ export default function RevenuePage() {
             const revenueDate = getRevenueDate();
             const todayAmt = isOnline
               ? onlineList.find((r: any) => r.date === revenueDate)?.amount || 0
-              : data.todayData[store]?.revenue || 0;
-            const hasData = isOnline ? todayAmt > 0 : !!data.todayData[store];
+              : (((new Date().getUTCHours() + 8) % 24) < 20 ? data.yesterdayData[store] : data.todayData[store])?.revenue || 0;
+            const hasData = isOnline ? todayAmt > 0 : !!(((new Date().getUTCHours() + 8) % 24) < 20 ? data.yesterdayData[store] : data.todayData[store]);
             const status = isOnline ? (todayAmt > 0 ? 'ok' : 'waiting') : getStoreStatus(store, hasData);
             const cmp = data.comparison[store];
             const pct = isOnline ? null : cmp?.pct ?? null;
