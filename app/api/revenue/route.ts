@@ -57,7 +57,7 @@ export async function GET() {
       sorts: [{ property: '營業日期', direction: 'descending' }]
     });
 
-    if (debug) {
+    if (debugMode) {
       return NextResponse.json({ rowCount: rows.length, sample: rows.slice(0, 2) });
     }
     // 整理資料
