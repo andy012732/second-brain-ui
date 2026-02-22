@@ -12,9 +12,9 @@ const RAJ  = 'Rajdhani, sans-serif';
 function KPI({ label, value, sub, color = '#00f5ff' }: any) {
   return (
     <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.1)', borderTop: `2px solid ${color}`, padding: '14px 16px' }}>
-      <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: '#1a3045', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>{label}</div>
       <div style={{ fontFamily: ORB, fontWeight: 700, fontSize: 22, color, textShadow: `0 0 12px ${color}80` }}>{value}</div>
-      {sub && <div style={{ fontFamily: MONO, fontSize: 9, color: '#2a4a5a', marginTop: 4 }}>{sub}</div>}
+      {sub && <div style={{ fontFamily: MONO, fontSize: 9, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -61,7 +61,7 @@ export default function AdsPage() {
       <div style={{ padding: '20px 24px', maxWidth: 1400, margin: '0 auto' }}>
 
         {/* 今日 KPI */}
-        <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.4)', marginBottom: 12 }}>TODAY SNAPSHOT</div>
+        <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.8)', marginBottom: 12 }}>TODAY SNAPSHOT</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 24 }}>
           <KPI label="TODAY SPEND" value={mL ? '—' : `$${t.spend?.toLocaleString('en', {minimumFractionDigits:0}) || 0}`} sub="今日花費" color="#ff006e" />
           <KPI label="IMPRESSIONS" value={mL ? '—' : (t.impressions > 999 ? `${(t.impressions/1000).toFixed(1)}K` : t.impressions || 0)} sub="曝光次數" color="#00f5ff" />
@@ -75,7 +75,7 @@ export default function AdsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 24 }}>
           {/* 7日摘要 */}
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.1)', padding: '16px 18px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.4)', marginBottom: 14 }}>7-DAY SUMMARY</div>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.8)', marginBottom: 14 }}>7-DAY SUMMARY</div>
             {[
               { label: '總花費', val: `$${w.spend?.toLocaleString('en', {minimumFractionDigits:0}) || 0}`, color: '#ff006e' },
               { label: '總曝光', val: w.impressions > 999 ? `${(w.impressions/1000).toFixed(0)}K` : w.impressions || 0, color: '#00f5ff' },
@@ -85,7 +85,7 @@ export default function AdsPage() {
               { label: '轉換數', val: w.purchases || 0, color: '#00f5ff' },
             ].map(item => (
               <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid rgba(0,245,255,0.05)' }}>
-                <span style={{ fontFamily: MONO, fontSize: 9, color: '#2a4a5a' }}>{item.label}</span>
+                <span style={{ fontFamily: MONO, fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{item.label}</span>
                 <span style={{ fontFamily: ORB, fontSize: 13, fontWeight: 700, color: item.color }}>{mL ? '—' : item.val}</span>
               </div>
             ))}
@@ -93,7 +93,7 @@ export default function AdsPage() {
 
           {/* 花費趨勢圖 */}
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.1)', padding: '16px 18px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.4)', marginBottom: 14 }}>30-DAY SPEND TREND</div>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.8)', marginBottom: 14 }}>30-DAY SPEND TREND</div>
             {daily.length > 0 ? (
               <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: '100%', height: 80 }}>
                 <defs>
@@ -133,7 +133,7 @@ export default function AdsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
           {/* Campaigns */}
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.1)', padding: '16px 18px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.4)', marginBottom: 14 }}>CAMPAIGN RANKING // 近7天</div>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.8)', marginBottom: 14 }}>CAMPAIGN RANKING // 近7天</div>
             {campaigns.length === 0 && !mL && (
               <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', padding: '20px 0' }}>// NO ACTIVE CAMPAIGNS</div>
             )}
@@ -155,7 +155,7 @@ export default function AdsPage() {
 
           {/* Adsets */}
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.1)', padding: '16px 18px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.4)', marginBottom: 14 }}>ADSET RANKING // 近7天</div>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.8)', marginBottom: 14 }}>ADSET RANKING // 近7天</div>
             {adsets.length === 0 && !mL && (
               <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', padding: '20px 0' }}>// NO ACTIVE ADSETS</div>
             )}
@@ -179,7 +179,7 @@ export default function AdsPage() {
         {/* 流量來源 */}
         {ga4?.sources && (
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.1)', padding: '16px 18px', marginBottom: 24 }}>
-            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.4)', marginBottom: 14 }}>GA4 TRAFFIC SOURCES // 近7天</div>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.8)', marginBottom: 14 }}>GA4 TRAFFIC SOURCES // 近7天</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
               {ga4.sources.map((s: any) => (
                 <div key={s.channel} style={{ background: '#091422', padding: '10px 12px', borderLeft: '2px solid #00f5ff' }}>
