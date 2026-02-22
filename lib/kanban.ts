@@ -36,6 +36,9 @@ export interface Task {
   attachments: Attachment[];
   comments: Comment[];
   order: number;
+  assignee?: string | null;
+  aiInstruction?: string | null;
+  project?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +55,9 @@ function rowToTask(row: any, comments: Comment[] = [], attachments: Attachment[]
     dueDate: row.due_date ?? null,
     isPinned: row.is_pinned ?? false,
     order: row.order ?? 0,
+    assignee: row.assignee ?? null,
+    aiInstruction: row.ai_instruction ?? null,
+    project: row.project ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     comments,
@@ -135,6 +141,9 @@ export async function createTask(task: Task): Promise<Task> {
     due_date: task.dueDate ?? null,
     is_pinned: task.isPinned,
     order: task.order,
+    assignee: task.assignee ?? null,
+    ai_instruction: task.aiInstruction ?? null,
+    project: task.project ?? null,
     created_at: task.createdAt,
     updated_at: task.updatedAt,
   });
@@ -152,6 +161,9 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<Ta
     ...(updates.dueDate !== undefined && { due_date: updates.dueDate }),
     ...(updates.isPinned !== undefined && { is_pinned: updates.isPinned }),
     ...(updates.order !== undefined && { order: updates.order }),
+    ...(updates.assignee !== undefined && { assignee: updates.assignee }),
+    ...(updates.aiInstruction !== undefined && { ai_instruction: updates.aiInstruction }),
+    ...(updates.project !== undefined && { project: updates.project }),
     updated_at: new Date().toISOString(),
   }).eq('id', id);
   if (error) throw error;

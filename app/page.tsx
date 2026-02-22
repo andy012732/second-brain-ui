@@ -18,6 +18,7 @@ export default function MissionControl() {
   const { data: goals }                     = useSWR('/api/revenue/goals', fetcher, { refreshInterval: 600000 });
   const { data: onlineList = [] }           = useSWR(`/api/revenue/online?month=${monthStr}`, fetcher, { refreshInterval: 300000 });
   const { data: acts = [], isLoading: aL }  = useSWR('/api/activity', fetcher, { refreshInterval: 10000 });
+  const { data: health }                    = useSWR('/api/health', fetcher, { refreshInterval: 60000 });
 
   // 業績數字（20:00前顯示昨日）
   const getStoreAmt = (store: string) => {
@@ -163,6 +164,30 @@ export default function MissionControl() {
 
         {/* RIGHT */}
         <aside style={{ display: 'flex', flexDirection: 'column', padding: '14px 12px', overflow: 'hidden', borderLeft: '1px solid rgba(0,245,255,0.07)' }}>
+          {/* SYSTEM STATUS */}
+          <div style={{ marginBottom: 10, padding: '8px 10px', background: 'rgba(9,20,34,0.9)', border: '1px solid rgba(0,245,255,0.08)', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, letterSpacing: 3, textTransform: 'uppercase', color: '#1a3045', marginBottom: 6 }}>SYS STATUS</div>
+            {[
+              { label: 'NOTION API', ok: health?.notion?.ok },
+              { label: 'VERCEL KV', ok: health?.kv?.ok },
+            ].map(s => (
+              <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: s.ok ? '#00ff88' : health ? '#ff006e' : '#1a3045', boxShadow: s.ok ? '0 0 6px #00ff88' : 'none', display: 'inline-block', flexShrink: 0 }}/>
+                <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, letterSpacing: 1, color: s.ok ? '#00ff88' : health ? '#ff006e' : '#1a3045' }}>{s.label}</span>
+                <span style={{ marginLeft: 'auto', fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: 7, color: s.ok ? '#00ff88' : health ? '#ff006e' : '#1a3045' }}>
+                  {!health ? '...' : s.ok ? 'OK' : 'ERR'}
+                </span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: health ? '#00f5ff' : '#1a3045', boxShadow: health ? '0 0 6px #00f5ff' : 'none', display: 'inline-block', flexShrink: 0 }}/>
+              <span style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 8, letterSpacing: 1, color: health ? '#00f5ff' : '#1a3045' }}>LAST SYNC</span>
+              <span style={{ marginLeft: 'auto', fontFamily: 'Orbitron, monospace', fontWeight: 700, fontSize: 7, color: health ? '#00f5ff' : '#1a3045' }}>
+                {health?.ts ? new Date(health.ts).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '...'}
+              </span>
+            </div>
+          </div>
+
           <div style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: '#1a3045', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexShrink: 0 }}>
             <svg viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="#00ff88" strokeWidth={2}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
             門市分項業績
