@@ -1,512 +1,306 @@
 'use client';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
-const MONO = 'Share Tech Mono, monospace';
-const ORB  = 'Inter, system-ui, sans-serif';
-const RAJ  = 'Rajdhani, sans-serif';
 
-// ═══════════════════════════════════════
-// MOCK DATA（FB / IG / TikTok — 串 API 後替換）
-// ═══════════════════════════════════════
-
-const MOCK_CHANNELS = {
-  facebook:  { label: 'Facebook',  icon: 'f', color: '#1877f2', count: 8730, countLabel: '粉絲', delta: '+5.2%', up: true },
-  instagram: { label: 'Instagram', icon: '◎', color: '#e1306c', count: 15200, countLabel: '粉絲', delta: '+18%', up: true },
-  tiktok:    { label: 'TikTok',    icon: '♪', color: '#00f2ea', count: 6850, countLabel: '粉絲', delta: '+32%', up: true },
-};
-
-const FOLLOWER_TREND = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date(Date.now() - (29 - i) * 86400000);
-  return {
-    date: d.toISOString().split('T')[0],
-    youtube: 27500 + Math.round(i * 33 + Math.random() * 50),
-    facebook: 8100 + Math.round(i * 21 + Math.random() * 50),
-    instagram: 13500 + Math.round(i * 57 + Math.random() * 100),
-    tiktok: 5200 + Math.round(i * 55 + Math.random() * 120),
-  };
-});
-
-type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
-
+/* ── 型別 ── */
 interface Video {
-  id?: string;
-  title: string;
-  platform: Platform;
-  views: number;
-  likes: number;
-  comments: number;
-  shares: number;
-  engRate: number;
-  publishedAt: string;
-  badge: string | null;
-  thumbnail: string | null;
-  duration: string;
+  id: string; title: string; platform: 'youtube' | 'facebook' | 'instagram' | 'tiktok';
+  views: number; likes: number; comments: number; shares: number;
+  engagementRate: number; publishedAt: string; thumbnail: string; badge?: string;
 }
 
-const MOCK_VIDEOS: Video[] = [
-  { title: '春季騎行裝備清單 🏍️', platform: 'instagram', views: 32100, likes: 4200, comments: 186, shares: 520, engRate: 15.3, publishedAt: '2026-02-21', badge: 'VIRAL', thumbnail: null, duration: '0:58' },
-  { title: '安全帽挑選指南｜新手必看', platform: 'instagram', views: 18700, likes: 2800, comments: 94, shares: 310, engRate: 17.1, publishedAt: '2026-02-19', badge: null, thumbnail: null, duration: '1:12' },
-  { title: '3秒看懂安全帽等級差異', platform: 'tiktok', views: 89200, likes: 12400, comments: 830, shares: 2100, engRate: 17.2, publishedAt: '2026-02-22', badge: '🔥 VIRAL', thumbnail: null, duration: '0:15' },
-  { title: '騎士日常 Vlog #47', platform: 'tiktok', views: 45600, likes: 6800, comments: 420, shares: 890, engRate: 17.8, publishedAt: '2026-02-20', badge: null, thumbnail: null, duration: '0:32' },
-  { title: '2026 最值得買的 3 頂安全帽', platform: 'tiktok', views: 38900, likes: 5200, comments: 310, shares: 720, engRate: 16.0, publishedAt: '2026-02-17', badge: null, thumbnail: null, duration: '0:22' },
-  { title: '德谷拉安全帽實測 360°', platform: 'facebook', views: 9800, likes: 620, comments: 87, shares: 142, engRate: 8.7, publishedAt: '2026-02-21', badge: null, thumbnail: null, duration: '5:10' },
-  { title: '騎士裝備團購開箱直播回放', platform: 'facebook', views: 6200, likes: 380, comments: 156, shares: 45, engRate: 9.4, publishedAt: '2026-02-16', badge: null, thumbnail: null, duration: '42:18' },
+/* ── Mock 資料（IG / TikTok）── */
+const IG_MOCK: Video[] = [
+  { id:'ig1', title:'安全帽開箱 Reels', platform:'instagram', views:42000, likes:3200, comments:180, shares:420, engagementRate:9.05, publishedAt:'2026-02-20', thumbnail:'', badge:'HOT' },
+  { id:'ig2', title:'日常穿搭 #OOTD', platform:'instagram', views:18500, likes:1400, comments:95, shares:210, engagementRate:9.22, publishedAt:'2026-02-18', thumbnail:'' },
+  { id:'ig3', title:'深夜騎車 Vlog', platform:'instagram', views:31000, likes:2800, comments:150, shares:380, engagementRate:10.74, publishedAt:'2026-02-15', thumbnail:'', badge:'HOT' },
+];
+const TT_MOCK: Video[] = [
+  { id:'tt1', title:'機車改裝 Before/After', platform:'tiktok', views:156000, likes:12000, comments:890, shares:3200, engagementRate:10.31, publishedAt:'2026-02-21', thumbnail:'', badge:'VIRAL' },
+  { id:'tt2', title:'安全帽挑選教學', platform:'tiktok', views:87000, likes:6500, comments:420, shares:1800, engagementRate:10.02, publishedAt:'2026-02-19', thumbnail:'', badge:'HOT' },
+  { id:'tt3', title:'深夜台北騎行', platform:'tiktok', views:64000, likes:4800, comments:310, shares:950, engagementRate:9.47, publishedAt:'2026-02-16', thumbnail:'' },
 ];
 
-const PLATFORM_COLORS: Record<Platform, string> = {
-  youtube: '#ff006e',
-  facebook: '#1877f2',
-  instagram: '#e1306c',
-  tiktok: '#00f2ea',
-};
+const PLATFORMS = ['all','youtube','facebook','instagram','tiktok'] as const;
+type Platform = typeof PLATFORMS[number];
+const COLORS: Record<string, string> = { youtube:'#ff0050', facebook:'#1877f2', instagram:'#e1306c', tiktok:'#00f2ea' };
+const ICONS: Record<string, string> = { youtube:'▶', facebook:'f', instagram:'◎', tiktok:'♪' };
 
-const PLATFORM_ICONS: Record<Platform, string> = {
-  youtube: '▶',
-  facebook: 'f',
-  instagram: '◎',
-  tiktok: '♪',
-};
+/* ── 格式化 ── */
+const fmt = (n: number) => n >= 10000000 ? (n/10000000).toFixed(1)+'千萬' : n >= 10000 ? (n/10000).toFixed(1)+'萬' : n.toLocaleString();
 
-// ═══════════════════════════════════════
-// COMPONENTS
-// ═══════════════════════════════════════
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 4, color: 'rgba(0,245,255,0.8)', marginBottom: 12, marginTop: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ display: 'inline-block', width: 20, height: 1, background: 'rgba(0,245,255,0.4)' }}/>
-      {children}
-      <span style={{ flex: 1, height: 1, background: 'rgba(0,245,255,0.08)' }}/>
-    </div>
-  );
-}
-
-function MiniBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  return (
-    <div style={{ height: 3, background: 'rgba(255,255,255,0.05)', marginTop: 6 }}>
-      <div style={{ width: `${pct}%`, height: '100%', background: color, boxShadow: `0 0 4px ${color}`, transition: 'width 0.5s ease' }} />
-    </div>
-  );
-}
-
-function formatNum(n: number): string {
-  if (n >= 10000) return `${(n / 10000).toFixed(1)}萬`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return n.toString();
-}
-
-function PlatformBadge({ platform }: { platform: Platform }) {
-  const color = PLATFORM_COLORS[platform];
-  const icon = PLATFORM_ICONS[platform];
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 8, color, background: `${color}15`, border: `1px solid ${color}30`, padding: '2px 8px', borderRadius: 2 }}>
-      <span style={{ fontSize: 9 }}>{icon}</span>
-      {platform.toUpperCase()}
-    </span>
-  );
-}
-
-// ═══════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════
+/* ── 粉絲趨勢 mock ── */
+const genTrend = (base: number, growth: number) => Array.from({length:30},(_,i)=>({ day:i+1, value: Math.round(base + (growth/30)*i + (Math.random()-0.5)*growth*0.1) }));
 
 export default function AnalyticsPage() {
-  const [activePlatform, setActivePlatform] = useState<'all' | Platform>('all');
-  const [trendPlatform, setTrendPlatform] = useState<Platform>('youtube');
+  const [platform, setPlatform] = useState<Platform>('all');
+  const [trendPlatform, setTrendPlatform] = useState<string>('youtube');
   const [titleInput, setTitleInput] = useState('');
-  const [aiResult, setAiResult] = useState<{ score: number; suggestions: string[] } | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<{score:number;suggestions:string[]}|null>(null);
 
-  // ═══ YouTube 真實 API ═══
-  const { data: ytData, isLoading: ytLoading } = useSWR('/api/analytics/youtube', fetcher, { refreshInterval: 300000 });
-  const ytChannel = ytData?.channel;
-  const ytVideos: Video[] = (ytData?.videos || []).map((v: any) => ({
-    id: v.id,
-    title: v.title,
-    platform: 'youtube' as Platform,
-    views: v.views,
-    likes: v.likes,
-    comments: v.comments,
-    shares: 0,
-    engRate: v.engagementRate,
-    publishedAt: v.publishedAt,
-    badge: v.views >= 10000 ? 'HOT' : null,
-    thumbnail: v.thumbnail,
-    duration: v.duration,
-  }));
+  /* ── API 資料 ── */
+  const { data: ytData } = useSWR('/api/analytics/youtube', fetcher, { refreshInterval: 300000 });
+  const { data: fbData } = useSWR('/api/analytics/facebook', fetcher, { refreshInterval: 300000 });
 
-  // 合併所有影片（YouTube 真實 + 其他 mock）
-  const ALL_VIDEOS = [...ytVideos, ...MOCK_VIDEOS];
+  /* ── 頻道統計 ── */
+  const ytSubs = ytData?.channel?.subscribers || 0;
+  const ytViews = ytData?.channel?.totalViews || 0;
+  const ytCount = ytData?.channel?.videoCount || 0;
+  const fbFans = fbData?.page?.fanCount || 0;
 
-  // 篩選影片
-  const filteredVideos = activePlatform === 'all'
-    ? ALL_VIDEOS
-    : ALL_VIDEOS.filter(v => v.platform === activePlatform);
-
-  const sortedVideos = [...filteredVideos].sort((a, b) => b.views - a.views);
-  const maxViews = sortedVideos[0]?.views || 1;
-
-  // 頻道概覽卡片
-  const channelCards = [
-    {
-      key: 'youtube',
-      label: 'YouTube',
-      icon: '▶',
-      color: '#ff006e',
-      count: ytChannel?.subscribers || 0,
-      countLabel: '訂閱',
-      delta: ytLoading ? '...' : `${formatNum(ytChannel?.totalViews || 0)} 總觀看`,
-      up: true,
-      isLive: !ytLoading && !!ytChannel,
-      isLoading: ytLoading,
-    },
-    ...Object.entries(MOCK_CHANNELS).map(([key, ch]) => ({
-      key,
-      label: ch.label,
-      icon: ch.icon,
-      color: ch.color,
-      count: ch.count,
-      countLabel: ch.countLabel,
-      delta: ch.delta,
-      up: ch.up,
-      isLive: false,
-      isLoading: false,
-    })),
+  const channels = [
+    { key:'youtube', label:'YOUTUBE', value:ytSubs, unit:'訂閱', extra:`${fmt(ytViews)} 總觀看`, color:COLORS.youtube, live: !!ytData?.channel },
+    { key:'facebook', label:'FACEBOOK', value:fbFans, unit:'粉絲', extra:`${(fbData?.posts||[]).length} 篇近期貼文`, color:COLORS.facebook, live: !!fbData?.page },
+    { key:'instagram', label:'INSTAGRAM', value:15200, unit:'粉絲', extra:'+18%', color:COLORS.instagram, live:false },
+    { key:'tiktok', label:'TIKTOK', value:6850, unit:'粉絲', extra:'+32%', color:COLORS.tiktok, live:false },
   ];
 
-  // 趨勢線 SVG
-  const svgW = 600, svgH = 80;
-  const trendData = FOLLOWER_TREND.map(d => d[trendPlatform]);
-  const trendMin = Math.min(...trendData) * 0.98;
-  const trendMax = Math.max(...trendData) * 1.02;
-  const trendPts = trendData.map((v, i) => {
-    const x = trendData.length > 1 ? (i / (trendData.length - 1)) * svgW : svgW / 2;
-    const y = svgH - ((v - trendMin) / (trendMax - trendMin)) * (svgH - 15) - 5;
-    return `${x},${y}`;
-  }).join(' ');
+  /* ── 影片整合 ── */
+  const ytVideos: Video[] = (ytData?.videos || []).map((v: any) => ({
+    id:v.id, title:v.title, platform:'youtube' as const, views:v.views, likes:v.likes,
+    comments:v.comments, shares:0, engagementRate:v.engagementRate,
+    publishedAt:v.publishedAt, thumbnail:v.thumbnail,
+    badge: v.views >= 50000 ? 'VIRAL' : v.views >= 10000 ? 'HOT' : v.views >= 5000 ? 'TRENDING' : undefined,
+  }));
 
-  // 總互動量（跨平台）
-  const totalEngagement = ALL_VIDEOS.reduce((s, v) => s + v.likes + v.comments + v.shares, 0);
-  const totalViews = ALL_VIDEOS.reduce((s, v) => s + v.views, 0);
-  const platformBreakdown = (['youtube', 'facebook', 'instagram', 'tiktok'] as Platform[]).map(p => {
-    const vids = ALL_VIDEOS.filter(v => v.platform === p);
-    const views = vids.reduce((s, v) => s + v.views, 0);
-    return { platform: p, views, count: vids.length, pct: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0 };
-  }).sort((a, b) => b.views - a.views);
+  const fbVideos: Video[] = (fbData?.posts || []).map((p: any) => ({
+    id:p.id, title:p.title, platform:'facebook' as const, views: p.likes + p.comments + p.shares,
+    likes:p.likes, comments:p.comments, shares:p.shares, engagementRate: p.engagement > 0 ? Math.min(((p.likes+p.comments)/(p.likes+p.comments+p.shares||1))*100, 100) : 0,
+    publishedAt:p.createdTime, thumbnail:p.image||'',
+    badge: (p.likes+p.comments+p.shares) >= 500 ? 'HOT' : undefined,
+  }));
 
-  // AI 標題優化
-  const handleAiScore = async () => {
+  const allVideos = [...ytVideos, ...fbVideos, ...IG_MOCK, ...TT_MOCK]
+    .sort((a,b) => b.views - a.views);
+  const filtered = platform === 'all' ? allVideos : allVideos.filter(v => v.platform === platform);
+
+  /* ── 平台分佈 ── */
+  const totalViews = allVideos.reduce((s,v)=>s+v.views, 0) || 1;
+  const dist = (['youtube','facebook','instagram','tiktok'] as const).map(p => {
+    const pv = allVideos.filter(v=>v.platform===p).reduce((s,v)=>s+v.views,0);
+    return { platform:p, views:pv, pct: Math.round(pv/totalViews*100) };
+  }).sort((a,b)=>b.views-a.views);
+
+  /* ── 趨勢數據 ── */
+  const trends: Record<string,{data:ReturnType<typeof genTrend>;start:number;end:number;color:string}> = {
+    youtube: { data:genTrend(ytSubs||27530, 962), start:ytSubs?ytSubs-962:27530, end:ytSubs||28492, color:COLORS.youtube },
+    facebook: { data:genTrend(fbFans||18200, 688), start:fbFans?fbFans-688:18200, end:fbFans||18888, color:COLORS.facebook },
+    instagram: { data:genTrend(14200, 1000), start:14200, end:15200, color:COLORS.instagram },
+    tiktok: { data:genTrend(5200, 1650), start:5200, end:6850, color:COLORS.tiktok },
+  };
+  const trend = trends[trendPlatform];
+  const tMax = Math.max(...trend.data.map(d=>d.value));
+  const tMin = Math.min(...trend.data.map(d=>d.value));
+  const tRange = tMax - tMin || 1;
+  const points = trend.data.map((d,i) => `${(i/(trend.data.length-1))*100},${100-((d.value-tMin)/tRange)*80}`).join(' ');
+  const areaPoints = points + ` 100,100 0,100`;
+
+  /* ── AI 標題 ── */
+  const analyzeTitle = () => {
     if (!titleInput.trim()) return;
-    setAiLoading(true);
-    setAiResult(null);
-    // 模擬 AI 回應（之後接真實 API）
-    await new Promise(r => setTimeout(r, 1500));
-    const score = 60 + Math.round(Math.random() * 35);
-    const suggestions = [
-      `加入數字讓標題更具體，例如：「${titleInput.replace(/(.{4})/, '$1 Top 5')}」`,
-      '建議在前 5 個字放入關鍵字，提升搜尋排名',
-      score > 80 ? '標題長度適中，SEO 友好 ✓' : '建議將標題控制在 40-60 字之間',
-      '可加入 emoji 提升點擊率（但不宜超過 2 個）',
-    ];
-    setAiResult({ score, suggestions: suggestions.slice(0, 3) });
-    setAiLoading(false);
+    const score = 60 + Math.floor(Math.random()*35);
+    setAiResult({ score, suggestions:[
+      `加入數字：「${titleInput.slice(0,10)}... 的5個秘密」`,
+      `加入疑問：「${titleInput.slice(0,10)}... 真的有效嗎？」`,
+      `加入情緒：「超震撼！${titleInput.slice(0,15)}...」`,
+    ]});
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#010208', color: '#e4f4ff', fontFamily: RAJ }}>
+    <div style={{ padding:'2rem', maxWidth:1400, margin:'0 auto', fontFamily:'Share Tech Mono, monospace' }}>
+      {/* 標題 */}
+      <h1 style={{ fontSize:'1.8rem', fontFamily:'Orbitron, monospace', color:'#f8f8f2' }}>內容分析</h1>
+      <p style={{ color:'#6272a4', fontSize:'0.75rem', letterSpacing:2, marginBottom:'1.5rem' }}>
+        CONTENT INTELLIGENCE // YT · FB · IG · TIKTOK
+      </p>
 
-      {/* Header */}
-      <div style={{ padding: '20px 24px 0' }}>
-        <div style={{ fontFamily: ORB, fontWeight: 900, fontSize: 20, letterSpacing: 1, color: '#e4f4ff' }}>內容分析</div>
-        <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 2, color: 'rgba(0,245,255,0.4)', marginTop: 4 }}>CONTENT INTELLIGENCE // YT · FB · IG · TIKTOK</div>
+      {/* CHANNEL OVERVIEW */}
+      <div style={{ color:'#bd93f9', fontSize:'0.7rem', letterSpacing:3, marginBottom:'0.8rem' }}>
+        —— CHANNEL OVERVIEW // 頻道總覽
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.8rem', marginBottom:'2rem' }}>
+        {channels.map(ch => (
+          <div key={ch.key} style={{ background:'#1a1a2e', border:`1px solid ${ch.color}33`, borderRadius:8, padding:'1rem', position:'relative' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem' }}>
+              <span style={{ color:'#6272a4', fontSize:'0.7rem', letterSpacing:2 }}>{ch.label}</span>
+              <span style={{ fontSize:'0.6rem', color: ch.live ? '#50fa7b' : '#ffb86c' }}>
+                {ch.live ? '● LIVE' : '◐ MOCK'}
+              </span>
+            </div>
+            <div style={{ fontSize:'2rem', fontWeight:700, fontFamily:'Rajdhani, monospace', color:ch.color }}>
+              {ch.value ? ch.value.toLocaleString() : '...'}
+            </div>
+            <div style={{ display:'flex', justifyContent:'space-between', color:'#6272a4', fontSize:'0.7rem', marginTop:'0.3rem' }}>
+              <span>{ch.unit}</span>
+              <span style={{ color:ch.color }}>{ch.extra}</span>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div style={{ padding: '0 24px 24px', maxWidth: 1400, margin: '0 auto' }}>
-
-        {/* ═══ CHANNEL OVERVIEW ═══ */}
-        <SectionTitle>CHANNEL OVERVIEW // 頻道總覽</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {channelCards.map(ch => (
-            <div key={ch.key} style={{ background: '#0d1c30', border: `1px solid ${ch.color}25`, borderTop: `2px solid ${ch.color}`, padding: '14px 16px', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 12, right: 14, fontSize: 20, opacity: 0.15, color: ch.color }}>{ch.icon}</div>
-              {/* Live / Mock 標籤 */}
-              <div style={{ position: 'absolute', top: 8, right: 8, fontFamily: MONO, fontSize: 7, color: ch.isLoading ? '#ffd700' : ch.isLive ? '#00ff88' : '#ff8c00' }}>
-                {ch.isLoading ? '...' : ch.isLive ? '● LIVE' : '◐ MOCK'}
+      {/* YOUTUBE HIGHLIGHTS */}
+      {ytData?.channel && (
+        <>
+          <div style={{ color:'#bd93f9', fontSize:'0.7rem', letterSpacing:3, marginBottom:'0.8rem' }}>
+            —— YOUTUBE HIGHLIGHTS // 頻道亮點
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.8rem', marginBottom:'2rem' }}>
+            {[
+              { label:'總觀看數', value:fmt(ytViews), color:'#ff79c6' },
+              { label:'影片數', value:String(ytCount), color:'#8be9fd' },
+              { label:'訂閱數', value:fmt(ytSubs), color:'#f1fa8c' },
+              { label:'平均觀看', value:fmt(Math.round(ytViews/(ytCount||1))), color:'#50fa7b' },
+            ].map(h => (
+              <div key={h.label} style={{ background:'#1a1a2e', borderTop:`2px solid ${h.color}`, borderRadius:8, padding:'1rem' }}>
+                <div style={{ color:'#6272a4', fontSize:'0.7rem', marginBottom:'0.3rem' }}>{h.label}</div>
+                <div style={{ fontSize:'1.8rem', fontWeight:700, fontFamily:'Rajdhani, monospace', color:h.color }}>{h.value}</div>
               </div>
-              <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>{ch.label.toUpperCase()}</div>
-              <div style={{ fontFamily: ORB, fontWeight: 800, fontSize: 26, color: ch.color, letterSpacing: -0.5 }}>
-                {ch.isLoading ? '—' : ch.count.toLocaleString()}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{ch.countLabel}</span>
-                <span style={{ fontFamily: MONO, fontSize: 9, color: ch.up ? '#00ff88' : '#ff6b00', fontWeight: 700 }}>{ch.delta}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ═══ YOUTUBE HIGHLIGHTS ═══ */}
-        {ytChannel && (
-          <>
-            <SectionTitle>YOUTUBE HIGHLIGHTS // 頻道亮點</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-              {[
-                { label: '總觀看數', value: formatNum(ytChannel.totalViews), color: '#ff006e' },
-                { label: '影片數', value: ytChannel.videoCount?.toLocaleString(), color: '#00f5ff' },
-                { label: '訂閱數', value: formatNum(ytChannel.subscribers), color: '#ffd700' },
-                { label: '平均觀看', value: formatNum(Math.round(ytChannel.totalViews / (ytChannel.videoCount || 1))), color: '#00ff88' },
-              ].map(item => (
-                <div key={item.label} style={{ background: '#091422', border: '1px solid rgba(0,245,255,0.08)', borderTop: `2px solid ${item.color}`, padding: '12px 14px' }}>
-                  <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontFamily: ORB, fontWeight: 800, fontSize: 22, color: item.color }}>{item.value}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ═══ FOLLOWER TREND ═══ */}
-        <SectionTitle>FOLLOWER TREND // 粉絲成長趨勢（30天）</SectionTitle>
-        <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '16px 18px' }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            {(['youtube', 'facebook', 'instagram', 'tiktok'] as Platform[]).map(p => (
-              <button key={p} onClick={() => setTrendPlatform(p)}
-                style={{
-                  fontFamily: MONO, fontSize: 9, letterSpacing: 1, padding: '4px 12px', cursor: 'pointer', borderRadius: 2,
-                  background: trendPlatform === p ? `${PLATFORM_COLORS[p]}18` : 'transparent',
-                  border: trendPlatform === p ? `1px solid ${PLATFORM_COLORS[p]}60` : '1px solid rgba(0,245,255,0.1)',
-                  color: trendPlatform === p ? PLATFORM_COLORS[p] : 'rgba(255,255,255,0.35)',
-                }}>
-                {PLATFORM_ICONS[p]} {p.toUpperCase()}
-              </button>
             ))}
           </div>
-          <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: '100%', height: 80 }}>
-            <defs>
-              <linearGradient id={`grad-${trendPlatform}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={PLATFORM_COLORS[trendPlatform]} stopOpacity="0.3" />
-                <stop offset="100%" stopColor={PLATFORM_COLORS[trendPlatform]} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <polygon points={`0,${svgH} ${trendPts} ${svgW},${svgH}`} fill={`url(#grad-${trendPlatform})`} />
-            <polyline points={trendPts} fill="none" stroke={PLATFORM_COLORS[trendPlatform]} strokeWidth="1.5" />
-            <text x="2" y={svgH} style={{ fontSize: 8, fill: 'rgba(255,255,255,0.25)', fontFamily: MONO }}>{FOLLOWER_TREND[0]?.date.slice(5)}</text>
-            <text x={svgW - 2} y={svgH} textAnchor="end" style={{ fontSize: 8, fill: 'rgba(255,255,255,0.25)', fontFamily: MONO }}>{FOLLOWER_TREND[FOLLOWER_TREND.length - 1]?.date.slice(5)}</text>
-          </svg>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>起始 {trendData[0]?.toLocaleString()}</span>
-            <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, color: PLATFORM_COLORS[trendPlatform] }}>
-              現在 {trendData[trendData.length - 1]?.toLocaleString()} （+{(trendData[trendData.length - 1] - trendData[0]).toLocaleString()}）
-            </span>
+        </>
+      )}
+
+      {/* FOLLOWER TREND */}
+      <div style={{ color:'#bd93f9', fontSize:'0.7rem', letterSpacing:3, marginBottom:'0.8rem' }}>
+        —— FOLLOWER TREND // 粉絲成長趨勢（30天）
+      </div>
+      <div style={{ background:'#1a1a2e', borderRadius:8, padding:'1.5rem', marginBottom:'2rem' }}>
+        <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1rem' }}>
+          {Object.entries(ICONS).map(([key,icon]) => (
+            <button key={key} onClick={()=>setTrendPlatform(key)} style={{
+              background: trendPlatform===key ? COLORS[key]+'22' : 'transparent',
+              border:`1px solid ${trendPlatform===key ? COLORS[key] : '#44475a'}`,
+              color: trendPlatform===key ? COLORS[key] : '#6272a4',
+              borderRadius:6, padding:'0.3rem 0.8rem', fontSize:'0.7rem', cursor:'pointer',
+            }}>
+              {icon} {key.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <svg viewBox="0 0 100 100" style={{ width:'100%', height:200 }} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={trend.color} stopOpacity="0.3"/>
+              <stop offset="100%" stopColor={trend.color} stopOpacity="0"/>
+            </linearGradient>
+          </defs>
+          <polygon points={areaPoints} fill="url(#tg)"/>
+          <polyline points={points} fill="none" stroke={trend.color} strokeWidth="0.5"/>
+        </svg>
+        <div style={{ display:'flex', justifyContent:'space-between', color:'#6272a4', fontSize:'0.65rem', marginTop:'0.5rem' }}>
+          <span>起始 {trend.start.toLocaleString()}</span>
+          <span style={{ color:trend.color }}>現在 {trend.end.toLocaleString()} (+{(trend.end-trend.start).toLocaleString()})</span>
+        </div>
+      </div>
+
+      {/* CONTENT PERFORMANCE */}
+      <div style={{ color:'#bd93f9', fontSize:'0.7rem', letterSpacing:3, marginBottom:'0.8rem' }}>
+        —— CONTENT PERFORMANCE // 內容成效排行
+      </div>
+      <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1rem' }}>
+        {PLATFORMS.map(p => (
+          <button key={p} onClick={()=>setPlatform(p)} style={{
+            background: platform===p ? '#bd93f922' : 'transparent',
+            border:`1px solid ${platform===p ? '#bd93f9' : '#44475a'}`,
+            color: platform===p ? '#bd93f9' : '#6272a4',
+            borderRadius:6, padding:'0.3rem 0.8rem', fontSize:'0.7rem', cursor:'pointer', textTransform:'uppercase',
+          }}>{p === 'all' ? '全部' : p}</button>
+        ))}
+      </div>
+      <div style={{ background:'#1a1a2e', borderRadius:8, overflow:'hidden', marginBottom:'2rem' }}>
+        {/* 表頭 */}
+        <div style={{ display:'grid', gridTemplateColumns:'32px 48px 1fr 80px 70px 80px 70px', gap:8, padding:'0.6rem 1rem', background:'#16162a', color:'#6272a4', fontSize:'0.65rem' }}>
+          <span>#</span><span></span><span>標題</span><span style={{textAlign:'right'}}>觀看</span>
+          <span style={{textAlign:'right'}}>讚</span><span style={{textAlign:'right'}}>留言/分享</span>
+          <span style={{textAlign:'right'}}>互動率</span>
+        </div>
+        {filtered.slice(0,15).map((v,i) => (
+          <div key={v.id} style={{ display:'grid', gridTemplateColumns:'32px 48px 1fr 80px 70px 80px 70px', gap:8, padding:'0.5rem 1rem', borderBottom:'1px solid #282a36', alignItems:'center' }}>
+            <span style={{ color: i<3 ? '#f1fa8c' : '#6272a4', fontWeight: i<3?700:400, fontSize:'0.8rem' }}>{i+1}</span>
+            <div style={{ width:48, height:36, borderRadius:4, overflow:'hidden', background:'#282a36', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {v.thumbnail ? <img src={v.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> :
+                <span style={{ color:COLORS[v.platform], fontSize:'1rem' }}>{ICONS[v.platform]}</span>}
+            </div>
+            <div>
+              <div style={{ color:'#f8f8f2', fontSize:'0.75rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:320 }}>
+                {v.title}
+                {v.badge && <span style={{ marginLeft:6, fontSize:'0.55rem', padding:'1px 5px', borderRadius:3,
+                  background: v.badge==='VIRAL'?'#ff555533':v.badge==='HOT'?'#ffb86c33':'#50fa7b33',
+                  color: v.badge==='VIRAL'?'#ff5555':v.badge==='HOT'?'#ffb86c':'#50fa7b',
+                }}>{v.badge}</span>}
+              </div>
+              <div style={{ color:'#6272a4', fontSize:'0.6rem' }}>
+                <span style={{ color:COLORS[v.platform] }}>{ICONS[v.platform]}</span> {v.platform} · {v.publishedAt}
+              </div>
+            </div>
+            <span style={{ textAlign:'right', color:'#f8f8f2', fontSize:'0.75rem' }}>{v.views.toLocaleString()}</span>
+            <span style={{ textAlign:'right', color:'#ff79c6', fontSize:'0.75rem' }}>{v.likes.toLocaleString()}</span>
+            <span style={{ textAlign:'right', color:'#6272a4', fontSize:'0.75rem' }}>{v.comments.toLocaleString()}/{v.shares.toLocaleString()}</span>
+            <span style={{ textAlign:'right', fontSize:'0.75rem',
+              color: v.engagementRate>=15?'#50fa7b':v.engagementRate>=5?'#f1fa8c':'#8be9fd'
+            }}>{v.engagementRate.toFixed(1)}%</span>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* ═══ CONTENT PERFORMANCE ═══ */}
-        <SectionTitle>CONTENT PERFORMANCE // 影片成效排行</SectionTitle>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {[
-            { key: 'all' as const, label: '全部', color: '#00f5ff' },
-            { key: 'youtube' as const, label: 'YouTube', color: PLATFORM_COLORS.youtube },
-            { key: 'facebook' as const, label: 'Facebook', color: PLATFORM_COLORS.facebook },
-            { key: 'instagram' as const, label: 'Instagram', color: PLATFORM_COLORS.instagram },
-            { key: 'tiktok' as const, label: 'TikTok', color: PLATFORM_COLORS.tiktok },
-          ].map(f => {
-            const count = f.key === 'all' ? ALL_VIDEOS.length : ALL_VIDEOS.filter(v => v.platform === f.key).length;
-            return (
-              <button key={f.key} onClick={() => setActivePlatform(f.key)}
-                style={{
-                  fontFamily: MONO, fontSize: 9, letterSpacing: 1, padding: '5px 14px', cursor: 'pointer', borderRadius: 2,
-                  background: activePlatform === f.key ? `${f.color}18` : 'transparent',
-                  border: activePlatform === f.key ? `1px solid ${f.color}60` : '1px solid rgba(0,245,255,0.1)',
-                  color: activePlatform === f.key ? f.color : 'rgba(255,255,255,0.35)',
-                }}>
-                {f.label} <span style={{ opacity: 0.5 }}>({count})</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Video list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {sortedVideos.slice(0, 15).map((v, i) => {
-            const color = PLATFORM_COLORS[v.platform];
-            return (
-              <div key={`${v.title}-${v.platform}-${i}`} style={{
-                background: '#0d1c30', border: '1px solid rgba(0,245,255,0.06)', padding: '12px 16px',
-                display: 'grid', gridTemplateColumns: '32px 48px 1fr 90px 90px 90px 80px', gap: 14, alignItems: 'center',
-              }}>
-                {/* Rank */}
-                <div style={{ fontFamily: ORB, fontSize: 16, fontWeight: 800, color: i < 3 ? '#ffd700' : 'rgba(255,255,255,0.15)', textAlign: 'center' }}>
-                  {i + 1}
-                </div>
-
-                {/* Thumbnail */}
-                <div style={{ width: 48, height: 36, background: '#091422', border: '1px solid rgba(0,245,255,0.1)', borderRadius: 2, overflow: 'hidden', flexShrink: 0 }}>
-                  {v.thumbnail ? (
-                    <img src={v.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 10, color: PLATFORM_COLORS[v.platform], opacity: 0.5 }}>{PLATFORM_ICONS[v.platform]}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Title + meta */}
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <PlatformBadge platform={v.platform} />
-                    {v.badge && (
-                      <span style={{ fontFamily: MONO, fontSize: 7, padding: '1px 6px', background: 'rgba(255,215,0,0.1)', color: '#ffd700', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 2 }}>{v.badge}</span>
-                    )}
-                    <span style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.2)' }}>{v.duration}</span>
-                  </div>
-                  <div style={{ fontFamily: RAJ, fontWeight: 600, fontSize: 14, color: '#e4f4ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.2)', marginTop: 2 }}>{v.publishedAt}</div>
-                </div>
-
-                {/* Views */}
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: ORB, fontSize: 15, fontWeight: 700, color }}>{formatNum(v.views)}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.3)' }}>觀看</div>
-                </div>
-
-                {/* Likes */}
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: ORB, fontSize: 13, fontWeight: 700, color: '#ff006e' }}>{formatNum(v.likes)}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.3)' }}>讚</div>
-                </div>
-
-                {/* Comments + Shares */}
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>
-                    💬 {formatNum(v.comments)}{v.shares > 0 ? ` · ↗ ${formatNum(v.shares)}` : ''}
-                  </div>
-                  <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>{v.shares > 0 ? '留言 · 分享' : '留言'}</div>
-                </div>
-
-                {/* Engagement rate */}
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: ORB, fontSize: 14, fontWeight: 700, color: v.engRate >= 15 ? '#00ff88' : v.engRate >= 5 ? '#ffd700' : '#00f5ff' }}>{v.engRate}%</div>
-                  <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.3)' }}>互動率</div>
-                  <MiniBar value={v.views} max={maxViews} color={color} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ═══ BOTTOM ROW ═══ */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
-
-          {/* Platform distribution */}
-          <div>
-            <SectionTitle>PLATFORM DISTRIBUTION // 跨平台流量佔比</SectionTitle>
-            <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '16px 18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-                <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>總觀看 {formatNum(totalViews)}</span>
-                <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>總互動 {formatNum(totalEngagement)}</span>
-              </div>
-              {platformBreakdown.map(p => (
-                <div key={p.platform} style={{ marginBottom: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontFamily: MONO, fontSize: 12, color: PLATFORM_COLORS[p.platform] }}>{PLATFORM_ICONS[p.platform]}</span>
-                      <span style={{ fontFamily: RAJ, fontSize: 13, fontWeight: 600, color: '#e4f4ff' }}>
-                        {p.platform === 'youtube' ? 'YouTube' : p.platform === 'facebook' ? 'Facebook' : p.platform === 'instagram' ? 'Instagram' : 'TikTok'}
-                      </span>
-                      <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.25)' }}>{p.count} 支影片</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                      <span style={{ fontFamily: ORB, fontSize: 18, fontWeight: 800, color: PLATFORM_COLORS[p.platform] }}>{p.pct}%</span>
-                      <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{formatNum(p.views)}</span>
-                    </div>
-                  </div>
-                  <div style={{ height: 6, background: 'rgba(255,255,255,0.04)', borderRadius: 1, overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${p.pct}%`, height: '100%', borderRadius: 1,
-                      background: `linear-gradient(90deg, ${PLATFORM_COLORS[p.platform]}40, ${PLATFORM_COLORS[p.platform]})`,
-                      boxShadow: `0 0 8px ${PLATFORM_COLORS[p.platform]}40`,
-                      transition: 'width 0.6s ease',
-                    }} />
-                  </div>
-                </div>
-              ))}
+      {/* PLATFORM DISTRIBUTION */}
+      <div style={{ color:'#bd93f9', fontSize:'0.7rem', letterSpacing:3, marginBottom:'0.8rem' }}>
+        —— PLATFORM DISTRIBUTION // 平台流量分佈
+      </div>
+      <div style={{ background:'#1a1a2e', borderRadius:8, padding:'1.5rem', marginBottom:'2rem' }}>
+        {dist.map(d => (
+          <div key={d.platform} style={{ marginBottom:'1rem' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'0.3rem' }}>
+              <span style={{ color:COLORS[d.platform], fontSize:'0.75rem' }}>
+                {ICONS[d.platform]} {d.platform.toUpperCase()}
+              </span>
+              <span style={{ color:'#f8f8f2', fontSize:'0.75rem' }}>{d.pct}% ({d.views.toLocaleString()})</span>
+            </div>
+            <div style={{ background:'#282a36', borderRadius:4, height:8, overflow:'hidden' }}>
+              <div style={{ width:`${d.pct}%`, height:'100%', background:`linear-gradient(90deg, ${COLORS[d.platform]}88, ${COLORS[d.platform]})`, borderRadius:4,
+                boxShadow:`0 0 8px ${COLORS[d.platform]}44`, transition:'width 0.5s ease' }}/>
             </div>
           </div>
+        ))}
+      </div>
 
-          {/* AI Title Optimizer */}
-          <div>
-            <SectionTitle>AI TITLE OPTIMIZER // 標題優化器</SectionTitle>
-            <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '16px 18px' }}>
-              <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>
-                輸入影片標題，AI 會分析 SEO 分數並給出優化建議
-              </div>
-              <input
-                type="text"
-                value={titleInput}
-                onChange={e => setTitleInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAiScore()}
-                placeholder="輸入影片標題..."
-                style={{
-                  width: '100%', background: '#050e1a', border: '1px solid rgba(0,245,255,0.15)', padding: '10px 14px',
-                  fontFamily: RAJ, fontSize: 14, color: '#e4f4ff', caretColor: '#00f5ff', outline: 'none', marginBottom: 10,
-                  boxSizing: 'border-box',
-                }}
-              />
-              <button
-                onClick={handleAiScore}
-                disabled={aiLoading || !titleInput.trim()}
-                style={{
-                  width: '100%', padding: '10px',
-                  background: aiLoading ? 'rgba(255,215,0,0.08)' : 'rgba(0,245,255,0.08)',
-                  border: aiLoading ? '1px solid rgba(255,215,0,0.3)' : '1px solid rgba(0,245,255,0.3)',
-                  color: aiLoading ? '#ffd700' : '#00f5ff',
-                  fontFamily: MONO, fontSize: 10, letterSpacing: 2, cursor: aiLoading ? 'wait' : 'pointer',
-                  opacity: !titleInput.trim() ? 0.4 : 1,
-                }}
-              >
-                {aiLoading ? '⏳ AI 分析中...' : '▶ AI 評分'}
-              </button>
-
-              {aiResult && (
-                <div style={{ marginTop: 14, padding: '14px', background: '#091422', border: '1px solid rgba(0,245,255,0.1)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-                    <div style={{
-                      width: 56, height: 56, borderRadius: '50%',
-                      border: `3px solid ${aiResult.score >= 80 ? '#00ff88' : aiResult.score >= 60 ? '#ffd700' : '#ff006e'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <div style={{ fontFamily: ORB, fontSize: 20, fontWeight: 800, color: aiResult.score >= 80 ? '#00ff88' : aiResult.score >= 60 ? '#ffd700' : '#ff006e' }}>
-                        {aiResult.score}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: RAJ, fontSize: 14, fontWeight: 700, color: '#e4f4ff' }}>
-                        {aiResult.score >= 80 ? '優秀標題 ✓' : aiResult.score >= 60 ? '標題尚可，有優化空間' : '建議大幅調整標題'}
-                      </div>
-                      <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>SEO SCORE / 100</div>
-                    </div>
-                  </div>
-                  <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(0,245,255,0.6)', marginBottom: 8 }}>SUGGESTIONS</div>
-                  {aiResult.suggestions.map((s, i) => (
-                    <div key={i} style={{
-                      padding: '8px 10px', marginBottom: 4,
-                      background: 'rgba(0,245,255,0.03)', borderLeft: '2px solid rgba(0,245,255,0.2)',
-                      fontFamily: RAJ, fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5,
-                    }}>
-                      {s}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
+      {/* AI TITLE OPTIMIZER */}
+      <div style={{ color:'#bd93f9', fontSize:'0.7rem', letterSpacing:3, marginBottom:'0.8rem' }}>
+        —— AI TITLE OPTIMIZER // AI 標題優化器
+      </div>
+      <div style={{ background:'#1a1a2e', borderRadius:8, padding:'1.5rem' }}>
+        <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1rem' }}>
+          <input value={titleInput} onChange={e=>setTitleInput(e.target.value)} placeholder="輸入你的影片標題..."
+            onKeyDown={e=>e.key==='Enter'&&analyzeTitle()}
+            style={{ flex:1, background:'#282a36', border:'1px solid #44475a', borderRadius:6, padding:'0.5rem 0.8rem', color:'#f8f8f2', fontSize:'0.8rem', fontFamily:'inherit' }}/>
+          <button onClick={analyzeTitle} style={{ background:'linear-gradient(135deg,#bd93f9,#ff79c6)', border:'none', borderRadius:6, padding:'0.5rem 1.2rem', color:'#f8f8f2', fontSize:'0.75rem', cursor:'pointer', fontFamily:'inherit' }}>
+            分析
+          </button>
         </div>
+        {aiResult && (
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:'1rem', marginBottom:'1rem' }}>
+              <div style={{ fontSize:'2.5rem', fontWeight:700, fontFamily:'Rajdhani, monospace',
+                color: aiResult.score>=80?'#50fa7b':aiResult.score>=60?'#f1fa8c':'#ff5555' }}>
+                {aiResult.score}
+              </div>
+              <div>
+                <div style={{ color:'#6272a4', fontSize:'0.7rem' }}>SEO 分數</div>
+                <div style={{ background:'#282a36', borderRadius:4, height:6, width:120, marginTop:4 }}>
+                  <div style={{ width:`${aiResult.score}%`, height:'100%', borderRadius:4,
+                    background: aiResult.score>=80?'#50fa7b':aiResult.score>=60?'#f1fa8c':'#ff5555' }}/>
+                </div>
+              </div>
+            </div>
+            {aiResult.suggestions.map((s,i) => (
+              <div key={i} style={{ padding:'0.5rem 0.8rem', background:'#282a36', borderRadius:6, marginBottom:'0.4rem', color:'#f8f8f2', fontSize:'0.75rem', borderLeft:`2px solid ${['#8be9fd','#50fa7b','#ff79c6'][i]}` }}>
+                💡 {s}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
