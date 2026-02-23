@@ -1,26 +1,27 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import useSWR from 'swr';
 
+const fetcher = (url: string) => fetch(url).then(r => r.json());
 const MONO = 'Share Tech Mono, monospace';
 const ORB  = 'Inter, system-ui, sans-serif';
 const RAJ  = 'Rajdhani, sans-serif';
 
 // ═══════════════════════════════════════
-// MOCK DATA（串 API 後替換）
+// MOCK DATA（FB / IG / TikTok — 串 API 後替換）
 // ═══════════════════════════════════════
 
-const CHANNEL_STATS = {
-  youtube:   { label: 'YouTube',   icon: '▶', color: '#ff006e', subs: 12400, delta: '+12%', up: true },
-  facebook:  { label: 'Facebook',  icon: 'f', color: '#1877f2', followers: 8730, delta: '+5.2%', up: true },
-  instagram: { label: 'Instagram', icon: '◎', color: '#e1306c', followers: 15200, delta: '+18%', up: true },
-  tiktok:    { label: 'TikTok',    icon: '♪', color: '#00f2ea', followers: 6850, delta: '+32%', up: true },
+const MOCK_CHANNELS = {
+  facebook:  { label: 'Facebook',  icon: 'f', color: '#1877f2', count: 8730, countLabel: '粉絲', delta: '+5.2%', up: true },
+  instagram: { label: 'Instagram', icon: '◎', color: '#e1306c', count: 15200, countLabel: '粉絲', delta: '+18%', up: true },
+  tiktok:    { label: 'TikTok',    icon: '♪', color: '#00f2ea', count: 6850, countLabel: '粉絲', delta: '+32%', up: true },
 };
 
 const FOLLOWER_TREND = Array.from({ length: 30 }, (_, i) => {
   const d = new Date(Date.now() - (29 - i) * 86400000);
   return {
     date: d.toISOString().split('T')[0],
-    youtube: 11200 + Math.round(i * 40 + Math.random() * 80),
+    youtube: 27500 + Math.round(i * 33 + Math.random() * 50),
     facebook: 8100 + Math.round(i * 21 + Math.random() * 50),
     instagram: 13500 + Math.round(i * 57 + Math.random() * 100),
     tiktok: 5200 + Math.round(i * 55 + Math.random() * 120),
@@ -30,6 +31,7 @@ const FOLLOWER_TREND = Array.from({ length: 30 }, (_, i) => {
 type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
 
 interface Video {
+  id?: string;
   title: string;
   platform: Platform;
   views: number;
@@ -43,10 +45,7 @@ interface Video {
   duration: string;
 }
 
-const VIDEOS: Video[] = [
-  { title: 'GiberPass 十大必用功能完整導覽', platform: 'youtube', views: 24200, likes: 1820, comments: 342, shares: 186, engRate: 9.7, publishedAt: '2026-02-20', badge: 'TRENDING', thumbnail: null, duration: '12:34' },
-  { title: '飆鋒衣開箱 — 騎士必備評測 2026', platform: 'youtube', views: 18100, likes: 1340, comments: 218, shares: 95, engRate: 9.1, publishedAt: '2026-02-18', badge: 'HOT', thumbnail: null, duration: '8:45' },
-  { title: '德谷拉安全帽性能大比拼', platform: 'youtube', views: 12400, likes: 980, comments: 156, shares: 67, engRate: 9.7, publishedAt: '2026-02-15', badge: null, thumbnail: null, duration: '15:22' },
+const MOCK_VIDEOS: Video[] = [
   { title: '春季騎行裝備清單 🏍️', platform: 'instagram', views: 32100, likes: 4200, comments: 186, shares: 520, engRate: 15.3, publishedAt: '2026-02-21', badge: 'VIRAL', thumbnail: null, duration: '0:58' },
   { title: '安全帽挑選指南｜新手必看', platform: 'instagram', views: 18700, likes: 2800, comments: 94, shares: 310, engRate: 17.1, publishedAt: '2026-02-19', badge: null, thumbnail: null, duration: '1:12' },
   { title: '3秒看懂安全帽等級差異', platform: 'tiktok', views: 89200, likes: 12400, comments: 830, shares: 2100, engRate: 17.2, publishedAt: '2026-02-22', badge: '🔥 VIRAL', thumbnail: null, duration: '0:15' },
@@ -121,13 +120,62 @@ export default function AnalyticsPage() {
   const [aiResult, setAiResult] = useState<{ score: number; suggestions: string[] } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  // ═══ YouTube 真實 API ═══
+  const { data: ytData, isLoading: ytLoading } = useSWR('/api/analytics/youtube', fetcher, { refreshInterval: 300000 });
+  const ytChannel = ytData?.channel;
+  const ytVideos: Video[] = (ytData?.videos || []).map((v: any) => ({
+    id: v.id,
+    title: v.title,
+    platform: 'youtube' as Platform,
+    views: v.views,
+    likes: v.likes,
+    comments: v.comments,
+    shares: 0,
+    engRate: v.engagementRate,
+    publishedAt: v.publishedAt,
+    badge: v.views >= 10000 ? 'HOT' : null,
+    thumbnail: v.thumbnail,
+    duration: v.duration,
+  }));
+
+  // 合併所有影片（YouTube 真實 + 其他 mock）
+  const ALL_VIDEOS = [...ytVideos, ...MOCK_VIDEOS];
+
   // 篩選影片
   const filteredVideos = activePlatform === 'all'
-    ? VIDEOS
-    : VIDEOS.filter(v => v.platform === activePlatform);
+    ? ALL_VIDEOS
+    : ALL_VIDEOS.filter(v => v.platform === activePlatform);
 
   const sortedVideos = [...filteredVideos].sort((a, b) => b.views - a.views);
   const maxViews = sortedVideos[0]?.views || 1;
+
+  // 頻道概覽卡片
+  const channelCards = [
+    {
+      key: 'youtube',
+      label: 'YouTube',
+      icon: '▶',
+      color: '#ff006e',
+      count: ytChannel?.subscribers || 0,
+      countLabel: '訂閱',
+      delta: ytLoading ? '...' : `${formatNum(ytChannel?.totalViews || 0)} 總觀看`,
+      up: true,
+      isLive: !ytLoading && !!ytChannel,
+      isLoading: ytLoading,
+    },
+    ...Object.entries(MOCK_CHANNELS).map(([key, ch]) => ({
+      key,
+      label: ch.label,
+      icon: ch.icon,
+      color: ch.color,
+      count: ch.count,
+      countLabel: ch.countLabel,
+      delta: ch.delta,
+      up: ch.up,
+      isLive: false,
+      isLoading: false,
+    })),
+  ];
 
   // 趨勢線 SVG
   const svgW = 600, svgH = 80;
@@ -141,10 +189,10 @@ export default function AnalyticsPage() {
   }).join(' ');
 
   // 總互動量（跨平台）
-  const totalEngagement = VIDEOS.reduce((s, v) => s + v.likes + v.comments + v.shares, 0);
-  const totalViews = VIDEOS.reduce((s, v) => s + v.views, 0);
+  const totalEngagement = ALL_VIDEOS.reduce((s, v) => s + v.likes + v.comments + v.shares, 0);
+  const totalViews = ALL_VIDEOS.reduce((s, v) => s + v.views, 0);
   const platformBreakdown = (['youtube', 'facebook', 'instagram', 'tiktok'] as Platform[]).map(p => {
-    const vids = VIDEOS.filter(v => v.platform === p);
+    const vids = ALL_VIDEOS.filter(v => v.platform === p);
     const views = vids.reduce((s, v) => s + v.views, 0);
     return { platform: p, views, count: vids.length, pct: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0 };
   }).sort((a, b) => b.views - a.views);
@@ -181,25 +229,48 @@ export default function AnalyticsPage() {
         {/* ═══ CHANNEL OVERVIEW ═══ */}
         <SectionTitle>CHANNEL OVERVIEW // 頻道總覽</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {Object.entries(CHANNEL_STATS).map(([key, ch]) => (
-            <div key={key} style={{ background: '#0d1c30', border: `1px solid ${ch.color}25`, borderTop: `2px solid ${ch.color}`, padding: '14px 16px', position: 'relative' }}>
+          {channelCards.map(ch => (
+            <div key={ch.key} style={{ background: '#0d1c30', border: `1px solid ${ch.color}25`, borderTop: `2px solid ${ch.color}`, padding: '14px 16px', position: 'relative' }}>
               <div style={{ position: 'absolute', top: 12, right: 14, fontSize: 20, opacity: 0.15, color: ch.color }}>{ch.icon}</div>
+              {/* Live / Mock 標籤 */}
+              <div style={{ position: 'absolute', top: 8, right: 8, fontFamily: MONO, fontSize: 7, color: ch.isLoading ? '#ffd700' : ch.isLive ? '#00ff88' : '#ff8c00' }}>
+                {ch.isLoading ? '...' : ch.isLive ? '● LIVE' : '◐ MOCK'}
+              </div>
               <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>{ch.label.toUpperCase()}</div>
               <div style={{ fontFamily: ORB, fontWeight: 800, fontSize: 26, color: ch.color, letterSpacing: -0.5 }}>
-                {('subs' in ch ? ch.subs : ch.followers).toLocaleString()}
+                {ch.isLoading ? '—' : ch.count.toLocaleString()}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{'subs' in ch ? '訂閱' : '粉絲'}</span>
+                <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{ch.countLabel}</span>
                 <span style={{ fontFamily: MONO, fontSize: 9, color: ch.up ? '#00ff88' : '#ff6b00', fontWeight: 700 }}>{ch.delta}</span>
               </div>
             </div>
           ))}
         </div>
 
+        {/* ═══ YOUTUBE HIGHLIGHTS ═══ */}
+        {ytChannel && (
+          <>
+            <SectionTitle>YOUTUBE HIGHLIGHTS // 頻道亮點</SectionTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+              {[
+                { label: '總觀看數', value: formatNum(ytChannel.totalViews), color: '#ff006e' },
+                { label: '影片數', value: ytChannel.videoCount?.toLocaleString(), color: '#00f5ff' },
+                { label: '訂閱數', value: formatNum(ytChannel.subscribers), color: '#ffd700' },
+                { label: '平均觀看', value: formatNum(Math.round(ytChannel.totalViews / (ytChannel.videoCount || 1))), color: '#00ff88' },
+              ].map(item => (
+                <div key={item.label} style={{ background: '#091422', border: '1px solid rgba(0,245,255,0.08)', borderTop: `2px solid ${item.color}`, padding: '12px 14px' }}>
+                  <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>{item.label}</div>
+                  <div style={{ fontFamily: ORB, fontWeight: 800, fontSize: 22, color: item.color }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* ═══ FOLLOWER TREND ═══ */}
         <SectionTitle>FOLLOWER TREND // 粉絲成長趨勢（30天）</SectionTitle>
         <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '16px 18px' }}>
-          {/* Platform tabs */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             {(['youtube', 'facebook', 'instagram', 'tiktok'] as Platform[]).map(p => (
               <button key={p} onClick={() => setTrendPlatform(p)}
@@ -213,7 +284,6 @@ export default function AnalyticsPage() {
               </button>
             ))}
           </div>
-          {/* Chart */}
           <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: '100%', height: 80 }}>
             <defs>
               <linearGradient id={`grad-${trendPlatform}`} x1="0" y1="0" x2="0" y2="1">
@@ -227,9 +297,7 @@ export default function AnalyticsPage() {
             <text x={svgW - 2} y={svgH} textAnchor="end" style={{ fontSize: 8, fill: 'rgba(255,255,255,0.25)', fontFamily: MONO }}>{FOLLOWER_TREND[FOLLOWER_TREND.length - 1]?.date.slice(5)}</text>
           </svg>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-            <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>
-              起始 {trendData[0]?.toLocaleString()}
-            </span>
+            <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>起始 {trendData[0]?.toLocaleString()}</span>
             <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, color: PLATFORM_COLORS[trendPlatform] }}>
               現在 {trendData[trendData.length - 1]?.toLocaleString()} （+{(trendData[trendData.length - 1] - trendData[0]).toLocaleString()}）
             </span>
@@ -239,36 +307,52 @@ export default function AnalyticsPage() {
         {/* ═══ CONTENT PERFORMANCE ═══ */}
         <SectionTitle>CONTENT PERFORMANCE // 影片成效排行</SectionTitle>
 
-        {/* Platform filter */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           {[
             { key: 'all' as const, label: '全部', color: '#00f5ff' },
-            ...(['youtube', 'facebook', 'instagram', 'tiktok'] as Platform[]).map(p => ({ key: p, label: CHANNEL_STATS[p].label, color: PLATFORM_COLORS[p] })),
-          ].map(f => (
-            <button key={f.key} onClick={() => setActivePlatform(f.key)}
-              style={{
-                fontFamily: MONO, fontSize: 9, letterSpacing: 1, padding: '5px 14px', cursor: 'pointer', borderRadius: 2,
-                background: activePlatform === f.key ? `${f.color}18` : 'transparent',
-                border: activePlatform === f.key ? `1px solid ${f.color}60` : '1px solid rgba(0,245,255,0.1)',
-                color: activePlatform === f.key ? f.color : 'rgba(255,255,255,0.35)',
-              }}>
-              {f.label} {f.key !== 'all' && <span style={{ opacity: 0.5 }}>({VIDEOS.filter(v => v.platform === f.key).length})</span>}
-            </button>
-          ))}
+            { key: 'youtube' as const, label: 'YouTube', color: PLATFORM_COLORS.youtube },
+            { key: 'facebook' as const, label: 'Facebook', color: PLATFORM_COLORS.facebook },
+            { key: 'instagram' as const, label: 'Instagram', color: PLATFORM_COLORS.instagram },
+            { key: 'tiktok' as const, label: 'TikTok', color: PLATFORM_COLORS.tiktok },
+          ].map(f => {
+            const count = f.key === 'all' ? ALL_VIDEOS.length : ALL_VIDEOS.filter(v => v.platform === f.key).length;
+            return (
+              <button key={f.key} onClick={() => setActivePlatform(f.key)}
+                style={{
+                  fontFamily: MONO, fontSize: 9, letterSpacing: 1, padding: '5px 14px', cursor: 'pointer', borderRadius: 2,
+                  background: activePlatform === f.key ? `${f.color}18` : 'transparent',
+                  border: activePlatform === f.key ? `1px solid ${f.color}60` : '1px solid rgba(0,245,255,0.1)',
+                  color: activePlatform === f.key ? f.color : 'rgba(255,255,255,0.35)',
+                }}>
+                {f.label} <span style={{ opacity: 0.5 }}>({count})</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Video list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {sortedVideos.map((v, i) => {
+          {sortedVideos.slice(0, 15).map((v, i) => {
             const color = PLATFORM_COLORS[v.platform];
             return (
-              <div key={`${v.title}-${v.platform}`} style={{
+              <div key={`${v.title}-${v.platform}-${i}`} style={{
                 background: '#0d1c30', border: '1px solid rgba(0,245,255,0.06)', padding: '12px 16px',
-                display: 'grid', gridTemplateColumns: '32px 1fr 100px 100px 100px 80px', gap: 14, alignItems: 'center',
+                display: 'grid', gridTemplateColumns: '32px 48px 1fr 90px 90px 90px 80px', gap: 14, alignItems: 'center',
               }}>
                 {/* Rank */}
                 <div style={{ fontFamily: ORB, fontSize: 16, fontWeight: 800, color: i < 3 ? '#ffd700' : 'rgba(255,255,255,0.15)', textAlign: 'center' }}>
                   {i + 1}
+                </div>
+
+                {/* Thumbnail */}
+                <div style={{ width: 48, height: 36, background: '#091422', border: '1px solid rgba(0,245,255,0.1)', borderRadius: 2, overflow: 'hidden', flexShrink: 0 }}>
+                  {v.thumbnail ? (
+                    <img src={v.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 10, color: PLATFORM_COLORS[v.platform], opacity: 0.5 }}>{PLATFORM_ICONS[v.platform]}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Title + meta */}
@@ -299,14 +383,14 @@ export default function AnalyticsPage() {
                 {/* Comments + Shares */}
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: MONO, fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>
-                    💬 {formatNum(v.comments)} · ↗ {formatNum(v.shares)}
+                    💬 {formatNum(v.comments)}{v.shares > 0 ? ` · ↗ ${formatNum(v.shares)}` : ''}
                   </div>
-                  <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>留言 · 分享</div>
+                  <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>{v.shares > 0 ? '留言 · 分享' : '留言'}</div>
                 </div>
 
                 {/* Engagement rate */}
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: ORB, fontSize: 14, fontWeight: 700, color: v.engRate >= 15 ? '#00ff88' : v.engRate >= 10 ? '#ffd700' : '#00f5ff' }}>{v.engRate}%</div>
+                  <div style={{ fontFamily: ORB, fontSize: 14, fontWeight: 700, color: v.engRate >= 15 ? '#00ff88' : v.engRate >= 5 ? '#ffd700' : '#00f5ff' }}>{v.engRate}%</div>
                   <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.3)' }}>互動率</div>
                   <MiniBar value={v.views} max={maxViews} color={color} />
                 </div>
@@ -315,7 +399,7 @@ export default function AnalyticsPage() {
           })}
         </div>
 
-        {/* ═══ BOTTOM ROW: Platform Distribution + AI Optimizer ═══ */}
+        {/* ═══ BOTTOM ROW ═══ */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
 
           {/* Platform distribution */}
@@ -331,7 +415,9 @@ export default function AnalyticsPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontFamily: MONO, fontSize: 12, color: PLATFORM_COLORS[p.platform] }}>{PLATFORM_ICONS[p.platform]}</span>
-                      <span style={{ fontFamily: RAJ, fontSize: 13, fontWeight: 600, color: '#e4f4ff' }}>{CHANNEL_STATS[p.platform].label}</span>
+                      <span style={{ fontFamily: RAJ, fontSize: 13, fontWeight: 600, color: '#e4f4ff' }}>
+                        {p.platform === 'youtube' ? 'YouTube' : p.platform === 'facebook' ? 'Facebook' : p.platform === 'instagram' ? 'Instagram' : 'TikTok'}
+                      </span>
                       <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.25)' }}>{p.count} 支影片</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -386,15 +472,13 @@ export default function AnalyticsPage() {
                 {aiLoading ? '⏳ AI 分析中...' : '▶ AI 評分'}
               </button>
 
-              {/* AI Result */}
               {aiResult && (
                 <div style={{ marginTop: 14, padding: '14px', background: '#091422', border: '1px solid rgba(0,245,255,0.1)' }}>
-                  {/* Score */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
                     <div style={{
                       width: 56, height: 56, borderRadius: '50%',
                       border: `3px solid ${aiResult.score >= 80 ? '#00ff88' : aiResult.score >= 60 ? '#ffd700' : '#ff006e'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <div style={{ fontFamily: ORB, fontSize: 20, fontWeight: 800, color: aiResult.score >= 80 ? '#00ff88' : aiResult.score >= 60 ? '#ffd700' : '#ff006e' }}>
                         {aiResult.score}
@@ -407,7 +491,6 @@ export default function AnalyticsPage() {
                       <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>SEO SCORE / 100</div>
                     </div>
                   </div>
-                  {/* Suggestions */}
                   <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(0,245,255,0.6)', marginBottom: 8 }}>SUGGESTIONS</div>
                   {aiResult.suggestions.map((s, i) => (
                     <div key={i} style={{
@@ -424,7 +507,6 @@ export default function AnalyticsPage() {
           </div>
 
         </div>
-
       </div>
     </div>
   );
