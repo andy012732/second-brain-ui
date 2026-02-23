@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import useSWR from 'swr';
 import Link from 'next/link';
 
@@ -11,7 +11,7 @@ const RAJ  = 'Rajdhani, sans-serif';
 function KPI({ label, value, sub, color = '#00f5ff' }: any) {
   return (
     <div style={{ background: '#091422', border: '1px solid rgba(0,245,255,0.08)', borderTop: `2px solid ${color}`, padding: '12px 14px' }}>
-      <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>{label}</div>
       <div style={{ fontFamily: ORB, fontWeight: 700, fontSize: 20, color, textShadow: `0 0 12px ${color}80` }}>{value}</div>
       {sub && <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>{sub}</div>}
     </div>
@@ -37,9 +37,25 @@ function SectionTitle({ children }: any) {
   );
 }
 
+const tw = (d: Date) => new Date(d.getTime() + 8*3600000).toISOString().split('T')[0];
+const daysAgo = (n: number) => tw(new Date(Date.now() - n*86400000));
+
 export default function AdsPage() {
-  const { data: meta, isLoading: mL } = useSWR('/api/analytics/meta', fetcher, { refreshInterval: 300000 });
-  const { data: ga4,  isLoading: gL } = useSWR('/api/analytics/ga4',  fetcher, { refreshInterval: 300000 });
+  const todayStr = tw(new Date());
+  const [since, setSince] = useState(todayStr);
+  const [until, setUntil] = useState(todayStr);
+
+  const presets = [
+    { label: '今天', s: todayStr, u: todayStr },
+    { label: '昨天', s: daysAgo(1), u: daysAgo(1) },
+    { label: '近7天', s: daysAgo(6), u: todayStr },
+    { label: '近14天', s: daysAgo(13), u: todayStr },
+    { label: '近30天', s: daysAgo(29), u: todayStr },
+    { label: '本月', s: todayStr.slice(0,7)+'-01', u: todayStr },
+  ];
+
+  const { data: meta, isLoading: mL } = useSWR(`/api/analytics/meta?since=${since}&until=${until}`, fetcher, { refreshInterval: 300000 });
+  const { data: ga4,  isLoading: gL } = useSWR('/api/analytics/ga4', fetcher, { refreshInterval: 300000 });
 
   const t  = meta?.today || {};
   const w  = meta?.week  || {};
@@ -47,12 +63,10 @@ export default function AdsPage() {
   const adsets    = meta?.adsets    || [];
   const daily     = meta?.dailyTrend || [];
 
-  // GA4 流量來源找 Paid Search / Paid Social
-  const paidSocial  = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('paid social'))  || {};
-  const paidSearch  = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('paid search'))  || {};
+  const paidSocial    = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('paid social'))    || {};
+  const paidSearch    = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('paid search'))    || {};
   const organicSocial = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('organic social')) || {};
 
-  // SVG 花費趨勢
   const maxSpend = Math.max(...daily.map((d: any) => d.spend), 1);
   const svgW = 500, svgH = 70;
   const pts = daily.map((d: any, i: number) => {
@@ -60,6 +74,8 @@ export default function AdsPage() {
     const y = svgH - (d.spend / maxSpend) * (svgH - 10) - 5;
     return `${x},${y}`;
   }).join(' ');
+
+  const isPreset = (p: any) => since === p.s && until === p.u;
 
   return (
     <div style={{ minHeight: '100vh', background: '#010208', color: '#e4f4ff', fontFamily: RAJ }}>
@@ -73,13 +89,39 @@ export default function AdsPage() {
         </span>
       </div>
 
+      {/* 日期選擇列 */}
+      <div style={{ background: '#050e1a', borderBottom: '1px solid rgba(0,245,255,0.08)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(0,245,255,0.6)', marginRight: 4 }}>DATE</span>
+        {presets.map(p => (
+          <button key={p.label} onClick={() => { setSince(p.s); setUntil(p.u); }}
+            style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 1, padding: '5px 12px',
+              background: isPreset(p) ? 'rgba(0,245,255,0.12)' : 'transparent',
+              border: isPreset(p) ? '1px solid rgba(0,245,255,0.5)' : '1px solid rgba(0,245,255,0.15)',
+              color: isPreset(p) ? '#00f5ff' : 'rgba(255,255,255,0.4)',
+              cursor: 'pointer', borderRadius: 2 }}>
+            {p.label}
+          </button>
+        ))}
+        <span style={{ fontFamily: MONO, fontSize: 9, color: 'rgba(255,255,255,0.15)', margin: '0 4px' }}>|</span>
+        <input type="date" value={since} onChange={e => setSince(e.target.value)}
+          style={{ fontFamily: MONO, fontSize: 9, background: '#091422', border: '1px solid rgba(0,245,255,0.2)', color: '#e4f4ff', padding: '5px 8px', colorScheme: 'dark', borderRadius: 2 }} />
+        <span style={{ fontFamily: MONO, fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>—</span>
+        <input type="date" value={until} onChange={e => setUntil(e.target.value)}
+          style={{ fontFamily: MONO, fontSize: 9, background: '#091422', border: '1px solid rgba(0,245,255,0.2)', color: '#e4f4ff', padding: '5px 8px', colorScheme: 'dark', borderRadius: 2 }} />
+        {since !== todayStr || until !== todayStr ? (
+          <span style={{ fontFamily: MONO, fontSize: 8, color: '#ffd700', marginLeft: 8 }}>
+            {since === until ? since : `${since} ~ ${until}`}
+          </span>
+        ) : null}
+      </div>
+
       <div style={{ padding: '20px 24px', maxWidth: 1400, margin: '0 auto' }}>
 
-        {/* ═══ TOP: 兩平台核心指標並排 ═══ */}
+        {/* PLATFORM OVERVIEW */}
         <SectionTitle>PLATFORM OVERVIEW // 核心指標對比</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 8 }}>
 
-          {/* FB / Meta */}
+          {/* META */}
           <div style={{ background: '#0d1c30', border: '1px solid rgba(24,119,242,0.3)', borderTop: '2px solid #1877f2', padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#1877f2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 14, color: '#fff' }}>f</div>
@@ -90,14 +132,14 @@ export default function AdsPage() {
               <div style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 8, color: mL ? '#ffd700' : '#00ff88' }}>{mL ? 'LOADING...' : '● LIVE'}</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              <KPI label="今日花費" value={mL ? '—' : `$${t.spend?.toLocaleString() || 0}`} sub="TWD" color="#ff006e" />
-              <KPI label="7日 ROAS" value={mL ? '—' : w.roas ? `${w.roas.toFixed(2)}x` : 'N/A'} sub={`花費 $${w.spend?.toLocaleString() || 0}`} color="#00ff88" />
-              <KPI label="購買轉換" value={mL ? '—' : w.purchases?.toLocaleString() || 0} sub="近7天" color="#ffd700" />
+              <KPI label="期間花費" value={mL ? '—' : `$${t.spend?.toLocaleString() || 0}`} sub="TWD" color="#ff006e" />
+              <KPI label="ROAS" value={mL ? '—' : w.roas ? `${w.roas.toFixed(2)}x` : 'N/A'} sub={`花費 $${w.spend?.toLocaleString() || 0}`} color="#00ff88" />
+              <KPI label="購買轉換" value={mL ? '—' : w.purchases?.toLocaleString() || 0} sub="期間內" color="#ffd700" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 10 }}>
-              <KPI label="曝光" value={mL ? '—' : t.impressions > 999 ? `${(t.impressions/1000).toFixed(1)}K` : t.impressions || 0} sub="今日" color="#00f5ff" />
-              <KPI label="點擊率 CTR" value={mL ? '—' : `${t.ctr?.toFixed(2) || 0}%`} sub={`CPC $${t.cpc?.toFixed(2) || 0}`} color="#ffd700" />
-              <KPI label="觸及人數" value={mL ? '—' : t.reach > 999 ? `${(t.reach/1000).toFixed(1)}K` : t.reach || 0} sub={`頻率 ${t.frequency?.toFixed(1) || 0}x`} color="#9b59b6" />
+              <KPI label="曝光" value={mL ? '—' : t.impressions > 999 ? `${(t.impressions/1000).toFixed(1)}K` : t.impressions || 0} sub="期間" color="#00f5ff" />
+              <KPI label="CTR" value={mL ? '—' : `${t.ctr?.toFixed(2) || 0}%`} sub={`CPC $${t.cpc?.toFixed(2) || 0}`} color="#ffd700" />
+              <KPI label="觸及" value={mL ? '—' : t.reach > 999 ? `${(t.reach/1000).toFixed(1)}K` : t.reach || 0} sub={`頻率 ${t.frequency?.toFixed(1) || 0}x`} color="#9b59b6" />
             </div>
           </div>
 
@@ -124,12 +166,11 @@ export default function AdsPage() {
           </div>
         </div>
 
-        {/* ═══ META 詳細 ═══ */}
+        {/* META DETAIL */}
         <SectionTitle>META ADS DETAIL // Facebook · Instagram</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16, marginBottom: 8 }}>
-          {/* 7日摘要 */}
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '14px 16px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>7-DAY SUMMARY</div>
+            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>SUMMARY</div>
             {[
               { label: '總花費', val: `$${w.spend?.toLocaleString() || 0}`, color: '#ff006e' },
               { label: '總曝光', val: w.impressions > 999 ? `${(w.impressions/1000).toFixed(0)}K` : w.impressions || 0, color: '#00f5ff' },
@@ -145,30 +186,21 @@ export default function AdsPage() {
               </div>
             ))}
           </div>
-
-          {/* 花費趨勢 */}
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '14px 16px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>30-DAY SPEND TREND</div>
+            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>30-DAY SPEND TREND</div>
             {daily.length > 0 ? (
               <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: '100%', height: 70 }}>
                 {pts && <polyline points={pts} fill="none" stroke="#ff006e" strokeWidth="1.5" />}
                 <text x="2" y={svgH} style={{ fontSize: 8, fill: 'rgba(255,255,255,0.3)', fontFamily: MONO }}>{daily[0]?.date?.slice(5)}</text>
-                <text x={svgW - 2} y={svgH} textAnchor="end" style={{ fontSize: 8, fill: 'rgba(255,255,255,0.3)', fontFamily: MONO }}>{daily[daily.length-1]?.date?.slice(5)}</text>
+                <text x={svgW-2} y={svgH} textAnchor="end" style={{ fontSize: 8, fill: 'rgba(255,255,255,0.3)', fontFamily: MONO }}>{daily[daily.length-1]?.date?.slice(5)}</text>
               </svg>
-            ) : (
-              <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', paddingTop: 20 }}>// NO DATA</div>
-            )}
+            ) : <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', paddingTop: 20 }}>// NO DATA</div>}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 10 }}>
-              {daily.slice(-7).reduce((acc: any, d: any) => ({
-                spend: acc.spend + d.spend,
-                clicks: acc.clicks + d.clicks,
-                impressions: acc.impressions + d.impressions,
-              }), { spend: 0, clicks: 0, impressions: 0 }) && null}
               {[
                 { label: '昨日花費', val: `$${daily[daily.length-2]?.spend?.toLocaleString() || 0}`, color: '#ff006e' },
-                { label: '昨日曝光', val: daily[daily.length-2]?.impressions > 999 ? `${(daily[daily.length-2]?.impressions/1000).toFixed(1)}K` : daily[daily.length-2]?.impressions || 0, color: '#00f5ff' },
+                { label: '昨日曝光', val: (daily[daily.length-2]?.impressions||0) > 999 ? `${((daily[daily.length-2]?.impressions||0)/1000).toFixed(1)}K` : (daily[daily.length-2]?.impressions||0), color: '#00f5ff' },
                 { label: '昨日點擊', val: daily[daily.length-2]?.clicks?.toLocaleString() || 0, color: '#00ff88' },
-                { label: '昨日觸及', val: daily[daily.length-2]?.reach > 999 ? `${(daily[daily.length-2]?.reach/1000).toFixed(1)}K` : daily[daily.length-2]?.reach || 0, color: '#9b59b6' },
+                { label: '昨日觸及', val: (daily[daily.length-2]?.reach||0) > 999 ? `${((daily[daily.length-2]?.reach||0)/1000).toFixed(1)}K` : (daily[daily.length-2]?.reach||0), color: '#9b59b6' },
               ].map(item => (
                 <div key={item.label} style={{ background: '#091422', padding: '8px 10px', borderLeft: `2px solid ${item.color}` }}>
                   <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.3)', marginBottom: 3 }}>{item.label}</div>
@@ -179,18 +211,18 @@ export default function AdsPage() {
           </div>
         </div>
 
-        {/* Campaign + Adset 排名 */}
+        {/* Campaign + Adset */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 8 }}>
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '14px 16px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>CAMPAIGN RANKING // 近7天花費排序</div>
-            {campaigns.length === 0 && !mL && <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', padding: '16px 0' }}>// NO ACTIVE CAMPAIGNS</div>}
+            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>CAMPAIGN RANKING // 花費排序</div>
+            {campaigns.length === 0 && !mL && <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', padding: '16px 0' }}>// NO DATA</div>}
             {campaigns.map((c: any, i: number) => (
               <div key={i} style={{ padding: '9px 0', borderBottom: '1px solid rgba(0,245,255,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                   <span style={{ fontFamily: RAJ, fontWeight: 600, fontSize: 12, color: c.status === 'ACTIVE' ? '#e4f4ff' : '#2a4a5a', maxWidth: '65%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
                   <span style={{ fontFamily: ORB, fontSize: 13, fontWeight: 700, color: '#ff006e' }}>${c.spend.toLocaleString()}</span>
                 </div>
-                <div style={{ display: 'flex', gap: 10, fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>
+                <div style={{ display: 'flex', gap: 10, fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.35)' }}>
                   <span>CTR {c.ctr.toFixed(2)}%</span>
                   <span>CPC ${c.cpc.toFixed(2)}</span>
                   {c.roas > 0 && <span style={{ color: '#00ff88' }}>ROAS {c.roas.toFixed(2)}x</span>}
@@ -200,19 +232,18 @@ export default function AdsPage() {
               </div>
             ))}
           </div>
-
           <div style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '14px 16px' }}>
-            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>ADSET RANKING // 近7天花費排序</div>
-            {adsets.length === 0 && !mL && <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', padding: '16px 0' }}>// NO ACTIVE ADSETS</div>}
+            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>ADSET RANKING // 花費排序</div>
+            {adsets.length === 0 && !mL && <div style={{ fontFamily: MONO, fontSize: 9, color: '#1a3045', textAlign: 'center', padding: '16px 0' }}>// NO DATA</div>}
             {adsets.map((a: any, i: number) => (
               <div key={i} style={{ padding: '9px 0', borderBottom: '1px solid rgba(0,245,255,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                   <span style={{ fontFamily: RAJ, fontWeight: 600, fontSize: 12, color: a.status === 'ACTIVE' ? '#e4f4ff' : '#2a4a5a', maxWidth: '65%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
                   <span style={{ fontFamily: ORB, fontSize: 13, fontWeight: 700, color: '#00f5ff' }}>${a.spend.toLocaleString()}</span>
                 </div>
-                <div style={{ display: 'flex', gap: 10, fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>
-                  <span>曝光 {a.impressions > 999 ? `${(a.impressions/1000).toFixed(1)}K` : a.impressions}</span>
-                  <span>觸及 {a.reach > 999 ? `${(a.reach/1000).toFixed(1)}K` : a.reach}</span>
+                <div style={{ display: 'flex', gap: 10, fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.35)' }}>
+                  <span>曝光 {(a.impressions||0) > 999 ? `${((a.impressions||0)/1000).toFixed(1)}K` : a.impressions}</span>
+                  <span>觸及 {(a.reach||0) > 999 ? `${((a.reach||0)/1000).toFixed(1)}K` : a.reach}</span>
                   <span>CTR {a.ctr.toFixed(2)}%</span>
                 </div>
                 <MiniBar value={a.spend} max={adsets[0]?.spend || 1} color="#00f5ff" />
@@ -221,15 +252,14 @@ export default function AdsPage() {
           </div>
         </div>
 
-        {/* ═══ GA4 詳細 ═══ */}
+        {/* GA4 流量來源 */}
         <SectionTitle>GOOGLE ANALYTICS DETAIL // 流量來源分析</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10, marginBottom: 8 }}>
           {(ga4?.sources || []).map((s: any) => (
             <div key={s.channel} style={{ background: '#0d1c30', border: '1px solid rgba(0,245,255,0.08)', padding: '12px 14px' }}>
-              <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.35)', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.channel.toUpperCase()}</div>
+              <div style={{ fontFamily: MONO, fontSize: 7, color: 'rgba(255,255,255,0.4)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.channel.toUpperCase()}</div>
               <div style={{ fontFamily: ORB, fontSize: 20, fontWeight: 700, color: '#00f5ff' }}>{s.pct}%</div>
               <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>{s.sessions?.toLocaleString()} sessions</div>
-              <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.2)' }}>{s.users?.toLocaleString()} users</div>
               <MiniBar value={s.pct} max={100} color="#00f5ff" />
             </div>
           ))}
