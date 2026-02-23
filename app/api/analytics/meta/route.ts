@@ -11,15 +11,18 @@ async function fbGet(path: string, params: Record<string, string> = {}) {
 
 export const runtime = 'edge';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     if (!TOKEN || !ACCOUNT_ID) {
       return NextResponse.json({ error: 'Missing Meta config' }, { status: 500 });
     }
 
+    const { searchParams } = new URL(req.url);
     const today = new Date();
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    const fmt = (d: Date) => new Date(d.getTime() + 8*3600000).toISOString().split('T')[0];
     const todayStr = fmt(today);
+    const since = searchParams.get('since') || todayStr;
+    const until = searchParams.get('until') || todayStr;
     const d7 = fmt(new Date(today.getTime() - 7 * 86400000));
     const d30 = fmt(new Date(today.getTime() - 30 * 86400000));
 
@@ -27,13 +30,13 @@ export async function GET() {
     const [todayInsight, weekInsight, monthInsight, campaigns, adsets] = await Promise.all([
       // 今日帳戶概覽
       fbGet(`act_${ACCOUNT_ID}/insights`, {
-        time_range: JSON.stringify({ since: todayStr, until: todayStr }),
+        time_range: JSON.stringify({ since, until }),
         fields: 'spend,impressions,clicks,ctr,cpc,cpp,reach,frequency',
         level: 'account',
       }),
       // 近7天
       fbGet(`act_${ACCOUNT_ID}/insights`, {
-        time_range: JSON.stringify({ since: d7, until: todayStr }),
+        time_range: JSON.stringify({ since, until }),
         fields: 'spend,impressions,clicks,ctr,cpc,reach,actions,action_values',
         level: 'account',
       }),
