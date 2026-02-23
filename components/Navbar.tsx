@@ -10,6 +10,7 @@ const NAV = [
   { name: '內容分析',   href: '/analytics' },
   { name: '美股觀察',   href: '/stocks' },
   { name: '知識庫',     href: '/second-brain' },
+  { name: '廣告投放',   href: '/ads' },
 ];
 
 const S = {
