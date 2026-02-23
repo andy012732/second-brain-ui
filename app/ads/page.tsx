@@ -55,7 +55,7 @@ export default function AdsPage() {
   ];
 
   const { data: meta, isLoading: mL } = useSWR(`/api/analytics/meta?since=${since}&until=${until}`, fetcher, { refreshInterval: 300000 });
-  const { data: ga4,  isLoading: gL } = useSWR('/api/analytics/ga4', fetcher, { refreshInterval: 300000 });
+  const { data: ga4,  isLoading: gL } = useSWR(`/api/analytics/ga4?since=${since}&until=${until}`, fetcher, { refreshInterval: 300000 });
 
   const t  = meta?.today || {};
   const w  = meta?.week  || {};

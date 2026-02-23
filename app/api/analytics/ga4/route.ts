@@ -71,8 +71,19 @@ async function runReport(token: string, body: object) {
 
 export const runtime = 'edge';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const tw = (d: Date) => new Date(d.getTime() + 8*3600*1000).toISOString().split('T')[0];
+    const today = tw(new Date());
+    const dAgo = (n: number) => tw(new Date(Date.now() - n*86400000));
+    const since = searchParams.get('since') || dAgo(6);
+    const until = searchParams.get('until') || today;
+    // 上週同期
+    const diff = (new Date(until).getTime() - new Date(since).getTime()) / 86400000;
+    const lastSince = tw(new Date(new Date(since).getTime() - (diff+1)*86400000));
+    const lastUntil = tw(new Date(new Date(since).getTime() - 86400000));
+
     if (!PROPERTY_ID || !SA_JSON) {
       return NextResponse.json({ error: 'Missing GA4 config' }, { status: 500 });
     }
@@ -83,14 +94,14 @@ export async function GET() {
     const [usersReport, sourceReport, pagesReport, convReport] = await Promise.all([
       // 每日使用者數（近7天）
       runReport(token, {
-        dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: since, endDate: until }],
         dimensions: [{ name: 'date' }],
         metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
         orderBys: [{ dimension: { dimensionName: 'date' } }],
       }),
       // 流量來源
       runReport(token, {
-        dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: since, endDate: until }],
         dimensions: [{ name: 'sessionDefaultChannelGroup' }],
         metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
@@ -98,7 +109,7 @@ export async function GET() {
       }),
       // 熱門頁面
       runReport(token, {
-        dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: since, endDate: until }],
         dimensions: [{ name: 'pageTitle' }],
         metrics: [{ name: 'screenPageViews' }, { name: 'activeUsers' }],
         orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
@@ -107,8 +118,8 @@ export async function GET() {
       // 轉換數（近7天）
       runReport(token, {
         dateRanges: [
-          { startDate: '7daysAgo', endDate: 'today' },
-          { startDate: '14daysAgo', endDate: '8daysAgo' },
+          { startDate: since, endDate: until },
+          { startDate: lastSince, endDate: lastUntil },
         ],
         metrics: [{ name: 'conversions' }, { name: 'activeUsers' }, { name: 'sessions' }],
       }),
