@@ -5,14 +5,14 @@ import Link from 'next/link';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 const MONO = 'Share Tech Mono, monospace';
-const ORB  = 'Orbitron, monospace';
+const ORB  = 'Inter, system-ui, sans-serif';
 const RAJ  = 'Rajdhani, sans-serif';
 
 function KPI({ label, value, sub, color = '#00f5ff' }: any) {
   return (
     <div style={{ background: '#091422', border: '1px solid rgba(0,245,255,0.08)', borderTop: `2px solid ${color}`, padding: '12px 14px' }}>
       <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 2, color: 'rgba(255,255,255,0.45)', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontFamily: ORB, fontWeight: 700, fontSize: 20, color, textShadow: `0 0 12px ${color}80` }}>{value}</div>
+      <div style={{ fontFamily: ORB, fontWeight: 800, fontSize: 22, color, letterSpacing: -0.5 }}>{value}</div>
       {sub && <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>{sub}</div>}
     </div>
   );
