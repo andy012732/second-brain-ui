@@ -1,7 +1,7 @@
 'use client';
-import React, { useState } from 'react';
-import useSWR from 'swr';
 import Link from 'next/link';
+import { useState } from 'react';
+import useSWR from 'swr';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 const MONO = 'Share Tech Mono, monospace';
