@@ -7,7 +7,8 @@ const FB_BASE = 'https://graph.facebook.com/v19.0';
 
 async function fbGet(path: string, params: Record<string, string> = {}) {
   const qs = new URLSearchParams({ access_token: TOKEN, ...params });
-  const res = await fetch(`${FB_BASE}/${path}?${qs}`, { next: { revalidate: 300 } });
+  const url = `${FB_BASE}/${path}?${qs}`;
+  const res = await fetch(url);
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Facebook API ${res.status}: ${err}`);
@@ -15,55 +16,49 @@ async function fbGet(path: string, params: Record<string, string> = {}) {
   return res.json();
 }
 
+export const revalidate = 300;
+
 export async function GET() {
   try {
     if (!TOKEN || !PAGE_ID) {
       return NextResponse.json({ error: 'Missing Facebook config' }, { status: 500 });
     }
 
-    // 1. 粉專基本資訊（粉絲數）
-    const pageInfo = await fbGet(PAGE_ID, {
-      fields: 'name,fan_count,followers_count',
-    });
+    const [pageInfo, postsRes] = await Promise.all([
+      fbGet('me', { fields: 'name,fan_count,followers_count' }),
+      fbGet('me/posts', {
+        fields: 'message,created_time,full_picture,permalink_url,shares',
+        limit: '20',
+      }),
+    ]);
 
-    // 2. 最近 20 篇貼文（含互動數據）
-    const postsRes = await fbGet(`${PAGE_ID}/posts`, {
-      fields: 'message,created_time,full_picture,permalink_url,shares,likes.summary(true).limit(0),comments.summary(true).limit(0)',
-      limit: '20',
-    });
-
-    // 整理貼文列表
-    const posts = (postsRes.data || []).map((p: any) => {
-      const likes = p.likes?.summary?.total_count || 0;
-      const comments = p.comments?.summary?.total_count || 0;
-      const shares = p.shares?.count || 0;
-      const totalEngagement = likes + comments + shares;
-
-      return {
-        id: p.id,
-        message: p.message || '(無文字)',
-        // 取前 60 字當標題
-        title: (p.message || '(無文字)').slice(0, 60) + ((p.message || '').length > 60 ? '...' : ''),
-        createdTime: p.created_time?.split('T')[0] || '',
-        image: p.full_picture || '',
-        permalink: p.permalink_url || '',
-        likes,
-        comments,
-        shares,
-        engagement: totalEngagement,
-      };
-    });
+    const posts = await Promise.all(
+      (postsRes.data || []).map(async (p: any) => {
+        let likes = 0, comments = 0;
+        try {
+          const [likesRes, commentsRes] = await Promise.all([
+            fbGet(`${p.id}/likes`, { summary: 'true', limit: '0' }),
+            fbGet(`${p.id}/comments`, { summary: 'true', limit: '0' }),
+          ]);
+          likes = likesRes.summary?.total_count || 0;
+          comments = commentsRes.summary?.total_count || 0;
+        } catch {}
+        const shares = p.shares?.count || 0;
+        return {
+          id: p.id, message: p.message || '',
+          title: (p.message || '(無文字)').slice(0, 60) + ((p.message || '').length > 60 ? '...' : ''),
+          createdTime: p.created_time?.split('T')[0] || '',
+          image: p.full_picture || '', permalink: p.permalink_url || '',
+          likes, comments, shares, engagement: likes + comments + shares,
+        };
+      })
+    );
 
     return NextResponse.json({
-      page: {
-        name: pageInfo.name || '',
-        fanCount: pageInfo.fan_count || 0,
-        followersCount: pageInfo.followers_count || 0,
-      },
-      posts,
+      page: { name: pageInfo.name || '', fanCount: pageInfo.fan_count || 0, followersCount: pageInfo.followers_count || 0 },
+      posts: posts.sort((a: any, b: any) => b.engagement - a.engagement),
       updatedAt: new Date().toISOString(),
     });
-
   } catch (e: any) {
     console.error('Facebook API error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
