@@ -55,7 +55,6 @@ export default function AdsPage() {
   ];
 
   const { data: meta, isLoading: mL } = useSWR(`/api/analytics/meta?since=${since}&until=${until}`, fetcher, { refreshInterval: 300000 });
-  const { data: ga4,  isLoading: gL } = useSWR(`/api/analytics/ga4?since=${since}&until=${until}`, fetcher, { refreshInterval: 300000 });
 
   const t  = meta?.today || {};
   const w  = meta?.week  || {};
@@ -63,9 +62,6 @@ export default function AdsPage() {
   const adsets    = meta?.adsets    || [];
   const daily     = meta?.dailyTrend || [];
 
-  const paidSocial    = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('paid social'))    || {};
-  const paidSearch    = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('paid search'))    || {};
-  const organicSocial = ga4?.sources?.find((s: any) => s.channel?.toLowerCase().includes('organic social')) || {};
 
   const maxSpend = Math.max(...daily.map((d: any) => d.spend), 1);
   const svgW = 500, svgH = 70;
@@ -143,25 +139,28 @@ export default function AdsPage() {
             </div>
           </div>
 
-          {/* GA4 */}
-          <div style={{ background: '#0d1c30', border: '1px solid rgba(234,67,53,0.3)', borderTop: '2px solid #ea4335', padding: '16px 18px' }}>
+          {/* GOOGLE ADS */}
+          <div style={{ background: '#0d1c30', border: '1px solid rgba(251,188,4,0.3)', borderTop: '2px solid #fbbc04', padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#ea4335', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 12, color: '#fff' }}>G</div>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #4285f4 0%, #34a853 33%, #fbbc04 66%, #ea4335 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 11, color: '#fff' }}>G</div>
               <div>
-                <div style={{ fontFamily: ORB, fontSize: 12, fontWeight: 700, color: '#ea4335' }}>GOOGLE ANALYTICS</div>
-                <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>GA4 // 91商店002362</div>
+                <div style={{ fontFamily: ORB, fontSize: 12, fontWeight: 700, color: '#fbbc04' }}>GOOGLE ADS</div>
+                <div style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>Search / Display · 178-562-0272</div>
               </div>
-              <div style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 8, color: gL ? '#ffd700' : '#00ff88' }}>{gL ? 'LOADING...' : '● LIVE'}</div>
+              <div style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 8, color: '#ffd700' }}>⏳ PENDING APPROVAL</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              <KPI label="7日使用者" value={gL ? '—' : ga4?.conversions?.users7d?.toLocaleString() || 0} sub="Active Users" color="#ea4335" />
-              <KPI label="轉換數" value={gL ? '—' : ga4?.conversions?.thisWeek?.toLocaleString() || 0} sub={`上週 ${ga4?.conversions?.lastWeek || 0}`} color="#00ff88" />
-              <KPI label="付費社群" value={gL ? '—' : paidSocial.pct ? `${paidSocial.pct}%` : 'N/A'} sub={paidSocial.sessions ? `${paidSocial.sessions?.toLocaleString()} sessions` : '—'} color="#1877f2" />
+              <KPI label="期間花費" value="—" sub="TWD · API 審核中" color="#fbbc04" />
+              <KPI label="ROAS" value="—" sub="API 審核中" color="#00ff88" />
+              <KPI label="點擊數" value="—" sub="API 審核中" color="#4285f4" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 10 }}>
-              <KPI label="7日工作階段" value={gL ? '—' : ga4?.conversions?.sessions7d?.toLocaleString() || 0} sub="Sessions" color="#00f5ff" />
-              <KPI label="自然社群" value={gL ? '—' : organicSocial.pct ? `${organicSocial.pct}%` : 'N/A'} sub={organicSocial.sessions ? `${organicSocial.sessions?.toLocaleString()} sessions` : '—'} color="#ffd700" />
-              <KPI label="付費搜尋" value={gL ? '—' : paidSearch.pct ? `${paidSearch.pct}%` : 'N/A'} sub={paidSearch.sessions ? `${paidSearch.sessions?.toLocaleString()} sessions` : '—'} color="#ea4335" />
+              <KPI label="曝光" value="—" sub="API 審核中" color="#00f5ff" />
+              <KPI label="CTR" value="—" sub="CPC —" color="#ffd700" />
+              <KPI label="轉換數" value="—" sub="API 審核中" color="#34a853" />
+            </div>
+            <div style={{ marginTop: 14, padding: '8px 12px', background: 'rgba(251,188,4,0.06)', border: '1px solid rgba(251,188,4,0.15)', borderRadius: 2 }}>
+              <span style={{ fontFamily: MONO, fontSize: 8, color: 'rgba(251,188,4,0.6)', letterSpacing: 2 }}>// Standard Access 申請審核中，預計 1-3 個工作天後啟用</span>
             </div>
           </div>
         </div>
