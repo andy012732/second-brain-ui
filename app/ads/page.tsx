@@ -79,7 +79,7 @@ export default function AdsPage() {
   const { data: gadsRaw, isLoading: gaL } = useSWR(`/api/analytics/google-ads?since=${since}&until=${until}`, fetcher, { refreshInterval: 300000 });
 
   // Google Ads: API 有錯就 fallback 到假資料
-  const gadsHasError = gadsRaw?.error;
+  const gadsHasError = gadsRaw?.error || (gadsRaw && !gadsRaw?.today?.spend && !gadsRaw?.today?.impressions);
   const gads = gadsHasError ? GADS_MOCK : (gadsRaw || GADS_MOCK);
   const gadsIsMock = gadsHasError || !gadsRaw || gads._isMock;
 
