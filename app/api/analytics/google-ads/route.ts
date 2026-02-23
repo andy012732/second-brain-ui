@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 const DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN!;
-const MANAGER_ID = (process.env.GOOGLE_ADS_MANAGER_ID || '').replace(/-/g, '');
-const CUSTOMER_ID = (process.env.GOOGLE_ADS_CUSTOMER_ID || '').replace(/-/g, '');
+const MANAGER_ID = (process.env.GOOGLE_ADS_MANAGER_ID || '').trim().replace(/-/g, '');
+const CUSTOMER_ID = (process.env.GOOGLE_ADS_CUSTOMER_ID || '').trim().replace(/-/g, '');
 const CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_ADS_CLIENT_SECRET!;
 const REFRESH_TOKEN = process.env.GOOGLE_ADS_REFRESH_TOKEN!;
