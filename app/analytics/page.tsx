@@ -66,15 +66,24 @@ export default function AnalyticsPage() {
   }));
 
   const fbVideos: Video[] = (fbData?.posts || []).map((p: any) => ({
-    id:p.id, title:p.title, platform:'facebook' as const, views: p.likes + p.comments + p.shares,
-    likes:p.likes, comments:p.comments, shares:p.shares, engagementRate: p.engagement > 0 ? Math.min(((p.likes+p.comments)/(p.likes+p.comments+p.shares||1))*100, 100) : 0,
-    publishedAt:p.createdTime, thumbnail:p.image||'',
-    badge: (p.likes+p.comments+p.shares) >= 500 ? 'HOT' : undefined,
+    id:p.id, title:p.title, platform:'facebook' as const,
+    views: p.engagement || 0,
+    likes: p.reactions || 0,
+    comments: p.comments || 0,
+    shares: p.shares || 0,
+    engagementRate: fbFans > 0 ? Math.round(((p.engagement || 0) / fbFans) * 10000) / 100 : 0,
+    publishedAt: p.createdTime, thumbnail: p.image || '',
+    badge: (p.engagement || 0) >= 20 ? 'HOT' : undefined,
   }));
 
   const allVideos = [...ytVideos, ...fbVideos, ...IG_MOCK, ...TT_MOCK]
     .sort((a,b) => b.views - a.views);
   const filtered = platform === 'all' ? allVideos : allVideos.filter(v => v.platform === platform);
+
+  /* ── 欄位標題（依平台不同）── */
+  const colLabels = platform === 'facebook'
+    ? { col1: '互動總數', col2: '心情', col3: '留言/分享', col4: '觸及率' }
+    : { col1: '觀看', col2: '讚', col3: '留言/分享', col4: '互動率' };
 
   /* ── 平台分佈 ── */
   const totalViews = allVideos.reduce((s,v)=>s+v.views, 0) || 1;
@@ -212,9 +221,11 @@ export default function AnalyticsPage() {
       <div style={{ background:'#1a1a2e', borderRadius:8, overflow:'hidden', marginBottom:'2rem' }}>
         {/* 表頭 */}
         <div style={{ display:'grid', gridTemplateColumns:'32px 48px 1fr 80px 70px 80px 70px', gap:8, padding:'0.6rem 1rem', background:'#16162a', color:'#6272a4', fontSize:'0.65rem' }}>
-          <span>#</span><span></span><span>標題</span><span style={{textAlign:'right'}}>觀看</span>
-          <span style={{textAlign:'right'}}>讚</span><span style={{textAlign:'right'}}>留言/分享</span>
-          <span style={{textAlign:'right'}}>互動率</span>
+          <span>#</span><span></span><span>標題</span>
+          <span style={{textAlign:'right'}}>{colLabels.col1}</span>
+          <span style={{textAlign:'right'}}>{colLabels.col2}</span>
+          <span style={{textAlign:'right'}}>{colLabels.col3}</span>
+          <span style={{textAlign:'right'}}>{colLabels.col4}</span>
         </div>
         {filtered.slice(0,15).map((v,i) => (
           <div key={v.id} style={{ display:'grid', gridTemplateColumns:'32px 48px 1fr 80px 70px 80px 70px', gap:8, padding:'0.5rem 1rem', borderBottom:'1px solid #282a36', alignItems:'center' }}>
@@ -240,7 +251,7 @@ export default function AnalyticsPage() {
             <span style={{ textAlign:'right', color:'#6272a4', fontSize:'0.75rem' }}>{v.comments.toLocaleString()}/{v.shares.toLocaleString()}</span>
             <span style={{ textAlign:'right', fontSize:'0.75rem',
               color: v.engagementRate>=15?'#50fa7b':v.engagementRate>=5?'#f1fa8c':'#8be9fd'
-            }}>{v.engagementRate.toFixed(1)}%</span>
+            }}>{v.engagementRate.toFixed(2)}%</span>
           </div>
         ))}
       </div>
