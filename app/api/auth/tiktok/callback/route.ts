@@ -39,16 +39,9 @@ export async function GET(req: NextRequest) {
 
     if (tokenData.error) {
       const errMsg = tokenData.error_description || tokenData.error;
-      // Return JSON for debugging instead of redirect
-      return NextResponse.json({
-        error: tokenData.error,
-        description: tokenData.error_description,
-        full_response: tokenData,
-        debug: {
-          client_key_used: CLIENT_KEY.slice(0,6) + '...',
-          redirect_uri_used: REDIRECT_URI,
-        }
-      }, { status: 400 });
+      return NextResponse.redirect(
+        `https://second-brain-ui-chi.vercel.app/analytics?tiktok_error=${encodeURIComponent(errMsg)}`
+      );
     }
 
     const tokenStore = {

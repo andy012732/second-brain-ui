@@ -11,13 +11,6 @@ interface Video {
   engagementRate: number; publishedAt: string; thumbnail: string; badge?: string;
 }
 
-/* ── Mock 資料（TikTok — 尚無 API）── */
-const TT_MOCK: Video[] = [
-  { id:'tt1', title:'機車改裝 Before/After', platform:'tiktok', views:156000, likes:12000, comments:890, shares:3200, engagementRate:10.31, publishedAt:'2026-02-21', thumbnail:'', badge:'VIRAL' },
-  { id:'tt2', title:'安全帽挑選教學', platform:'tiktok', views:87000, likes:6500, comments:420, shares:1800, engagementRate:10.02, publishedAt:'2026-02-19', thumbnail:'', badge:'HOT' },
-  { id:'tt3', title:'深夜台北騎行', platform:'tiktok', views:64000, likes:4800, comments:310, shares:950, engagementRate:9.47, publishedAt:'2026-02-16', thumbnail:'' },
-];
-
 const PLATFORMS = ['all','youtube','facebook','instagram','tiktok'] as const;
 type Platform = typeof PLATFORMS[number];
 const COLORS: Record<string, string> = { youtube:'#ff0050', facebook:'#1877f2', instagram:'#e1306c', tiktok:'#00f2ea' };
@@ -39,6 +32,7 @@ export default function AnalyticsPage() {
   const { data: ytData } = useSWR('/api/analytics/youtube', fetcher, { refreshInterval: 300000 });
   const { data: fbData } = useSWR('/api/analytics/facebook', fetcher, { refreshInterval: 300000 });
   const { data: igData } = useSWR('/api/analytics/instagram', fetcher, { refreshInterval: 300000 });
+  const { data: ttData } = useSWR('/api/analytics/tiktok', fetcher, { refreshInterval: 300000 });
 
   /* ── 頻道統計 ── */
   const ytSubs = ytData?.channel?.subscribers || 0;
@@ -47,12 +41,15 @@ export default function AnalyticsPage() {
   const fbFans = fbData?.page?.fanCount || 0;
   const igFollowers = igData?.account?.followersCount || 0;
   const igMediaCount = igData?.account?.mediaCount || 0;
+  const ttFollowers = ttData?.account?.followerCount || 0;
+  const ttLikes = ttData?.account?.likesCount || 0;
+  const ttVideoCount = ttData?.account?.videoCount || 0;
 
   const channels = [
     { key:'youtube', label:'YOUTUBE', value:ytSubs, unit:'訂閱', extra:`${fmt(ytViews)} 總觀看`, color:COLORS.youtube, live: !!ytData?.channel },
     { key:'facebook', label:'FACEBOOK', value:fbFans, unit:'粉絲', extra:`${(fbData?.posts||[]).length} 篇近期貼文`, color:COLORS.facebook, live: !!fbData?.page },
     { key:'instagram', label:'INSTAGRAM', value:igFollowers, unit:'粉絲', extra:`${igMediaCount} 篇貼文`, color:COLORS.instagram, live: !!igData?.account },
-    { key:'tiktok', label:'TIKTOK', value:6850, unit:'粉絲', extra:'+32%', color:COLORS.tiktok, live:false },
+    { key:'tiktok', label:'TIKTOK', value:ttFollowers, unit:'粉絲', extra:`${fmt(ttLikes)} 總讚`, color:COLORS.tiktok, live: !!ttData?.account },
   ];
 
   /* ── 影片整合 ── */
@@ -82,10 +79,10 @@ export default function AnalyticsPage() {
       id: p.id,
       title: p.title || '(無標題)',
       platform: 'instagram' as const,
-      views: engagement, // IG Graph API 不直接提供 views，用互動數代替
+      views: engagement,
       likes: p.likes || 0,
       comments: p.comments || 0,
-      shares: 0, // IG Graph API 不提供 shares
+      shares: 0,
       engagementRate: engRate,
       publishedAt: p.createdTime || '',
       thumbnail: p.image || '',
@@ -93,7 +90,22 @@ export default function AnalyticsPage() {
     };
   });
 
-  const allVideos = [...ytVideos, ...fbVideos, ...igVideos, ...TT_MOCK]
+  /* ── TikTok 真實資料轉換 ── */
+  const ttVideos: Video[] = (ttData?.videos || []).map((v: any) => ({
+    id: v.id,
+    title: v.title || '(untitled)',
+    platform: 'tiktok' as const,
+    views: v.views || 0,
+    likes: v.likes || 0,
+    comments: v.comments || 0,
+    shares: v.shares || 0,
+    engagementRate: v.engagementRate || 0,
+    publishedAt: v.createdTime || '',
+    thumbnail: v.coverImage || '',
+    badge: (v.views || 0) >= 50000 ? 'VIRAL' : (v.views || 0) >= 10000 ? 'HOT' : (v.views || 0) >= 5000 ? 'TRENDING' : undefined,
+  }));
+
+  const allVideos = [...ytVideos, ...fbVideos, ...igVideos, ...ttVideos]
     .sort((a,b) => b.views - a.views);
   const filtered = platform === 'all' ? allVideos : allVideos.filter(v => v.platform === platform);
 
@@ -112,11 +124,13 @@ export default function AnalyticsPage() {
   }).sort((a,b)=>b.views-a.views);
 
   /* ── 趨勢數據 ── */
+  const ttF = ttFollowers || 23651;
+  const ttGrowth = Math.round(ttF * 0.07);
   const trends: Record<string,{data:ReturnType<typeof genTrend>;start:number;end:number;color:string}> = {
     youtube: { data:genTrend(ytSubs||27530, 962), start:ytSubs?ytSubs-962:27530, end:ytSubs||28492, color:COLORS.youtube },
     facebook: { data:genTrend(fbFans||18200, 688), start:fbFans?fbFans-688:18200, end:fbFans||18888, color:COLORS.facebook },
     instagram: { data:genTrend(igFollowers||14200, igFollowers ? Math.round(igFollowers*0.06) : 1000), start:igFollowers ? igFollowers - Math.round(igFollowers*0.06) : 14200, end:igFollowers||15200, color:COLORS.instagram },
-    tiktok: { data:genTrend(5200, 1650), start:5200, end:6850, color:COLORS.tiktok },
+    tiktok: { data:genTrend(ttF - ttGrowth, ttGrowth), start:ttF - ttGrowth, end:ttF, color:COLORS.tiktok },
   };
   const trend = trends[trendPlatform];
   const tMax = Math.max(...trend.data.map(d=>d.value));
@@ -202,6 +216,28 @@ export default function AnalyticsPage() {
               { label:'貼文數', value:String(igMediaCount), color:'#8be9fd' },
               { label:'總互動', value:fmt(igData.summary?.totalEngagement || 0), color:'#f1fa8c' },
               { label:'平均互動', value:String(igData.summary?.avgEngagement || 0), color:'#50fa7b' },
+            ].map(h => (
+              <div key={h.label} style={{ background:'#1a1a2e', borderTop:`2px solid ${h.color}`, borderRadius:8, padding:'1rem' }}>
+                <div style={{ color:'#6272a4', fontSize:'0.7rem', marginBottom:'0.3rem' }}>{h.label}</div>
+                <div style={{ fontSize:'1.8rem', fontWeight:700, fontFamily:'Rajdhani, monospace', color:h.color }}>{h.value}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* TIKTOK HIGHLIGHTS */}
+      {ttData?.account && (
+        <>
+          <div style={{ color:'#bd93f9', fontSize:'0.7rem', letterSpacing:3, marginBottom:'0.8rem' }}>
+            —— TIKTOK HIGHLIGHTS // {ttData.account.displayName}
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'0.8rem', marginBottom:'2rem' }}>
+            {[
+              { label:'粉絲數', value:fmt(ttFollowers), color:'#00f2ea' },
+              { label:'影片數', value:String(ttVideoCount), color:'#8be9fd' },
+              { label:'總讚數', value:fmt(ttLikes), color:'#f1fa8c' },
+              { label:'近期總觀看', value:fmt(ttData.summary?.totalViews || 0), color:'#50fa7b' },
             ].map(h => (
               <div key={h.label} style={{ background:'#1a1a2e', borderTop:`2px solid ${h.color}`, borderRadius:8, padding:'1rem' }}>
                 <div style={{ color:'#6272a4', fontSize:'0.7rem', marginBottom:'0.3rem' }}>{h.label}</div>
