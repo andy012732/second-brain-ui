@@ -108,11 +108,11 @@ export async function GET() {
       };
     });
 
-    const totalViews = videos.reduce((s, v) => s + v['views'], 0)
-    const totalLikes = videos.reduce((s, v) => s + v['likes'], 0)
-    const totalComments = videos.reduce((s, v) => s + v['comments'], 0)
-    const totalShares = videos.reduce((s, v) => s + v['shares'], 0)
-    const totalEngagement = videos.reduce((s, v) => s + v['engagement'], 0)
+    const totalViews = videos.reduce((s: number, v: any) => s + v.views, 0)
+    const totalLikes = videos.reduce((s: number, v: any) => s + v.likes, 0)
+    const totalComments = videos.reduce((s: number, v: any) => s + v.comments, 0)
+    const totalShares = videos.reduce((s: number, v: any) => s + v.shares, 0)
+    const totalEngagement = videos.reduce((s: number, v: any) => s + v.engagement, 0)
 
     return NextResponse.json({
       account: {
