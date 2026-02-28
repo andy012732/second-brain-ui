@@ -1,8 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-neon: #00f5ff;
+  --color-accent: #ff006e;
+  --color-neon-green: #00ff88;
+  --color-bg-deep: #010208;
+  --color-bg-dark: #050c18;
+  --color-bg-panel: #0d1c30;
+  --color-text-primary: #e4f4ff;
+  --color-text-secondary: #4a7a95;
+  --color-text-dim: #1a3045;
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -100,3 +110,9 @@ body::after {
 }
 
 .rev-row:hover { border-color: rgba(0,245,255,0.15); }
+
+@utility glass-card {
+  background: rgba(13, 28, 48, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 245, 255, 0.12);
+}
